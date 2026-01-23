@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { OrderCard } from './OrderCard';
+import { AddOrderInput } from './AddOrderInput';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -43,6 +44,9 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
             </Button>
           </div>
         </div>
+
+        {/* Custom Order Input */}
+        <AddOrderInput />
         
         <div 
           ref={scrollRef}

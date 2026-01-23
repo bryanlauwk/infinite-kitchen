@@ -103,6 +103,7 @@ export interface FunctionCall {
 
 export interface AlchemyResult {
   resultName: string;
+  resultId: string;
   emoji: string;
   description: string;
 }
