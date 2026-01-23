@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
-import { useAgents } from '@/context/AgentContext';
+import { useCookingLoop } from '@/hooks/useCookingLoop';
 import { KitchenLayout } from '@/components/kitchen/KitchenLayout';
 import { Header } from '@/components/kitchen/Header';
 import { HeroBanner } from '@/components/kitchen/HeroBanner';
@@ -13,42 +13,12 @@ import { AgentProvider } from '@/context/AgentContext';
 import { toast } from 'sonner';
 
 const KitchenContent: React.FC = () => {
-  const { 
-    cookingState, 
-    startOrder, 
-    setCookingActive,
-    addTimelineEvent,
-    orders 
-  } = useKitchen();
-  const { setAgentStatus, setAgentThinking } = useAgents();
-  
+  const { orders } = useKitchen();
+  const { runCookingLoop, isCooking } = useCookingLoop();
+
   const handleStartOrder = useCallback((orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-    
-    startOrder(orderId);
-    setCookingActive(true);
-    
-    // Add initial timeline event
-    addTimelineEvent({
-      type: 'thinking',
-      agent: 'chef',
-      content: `Starting order: ${order.dishName}. Let me plan the cooking steps...`,
-    });
-    
-    setAgentStatus('chef', 'thinking');
-    setAgentThinking('chef', `Planning ${order.dishName}...`);
-    
-    toast.info(`Started cooking: ${order.dishName}`);
-    
-    // Demo: simulate cooking (edge functions will handle real logic)
-    setTimeout(() => {
-      setAgentStatus('chef', 'idle');
-      setAgentThinking('chef', undefined);
-      setCookingActive(false);
-      toast.success('Backend edge functions ready for full cooking loop!');
-    }, 2000);
-  }, [orders, startOrder, setCookingActive, addTimelineEvent, setAgentStatus, setAgentThinking]);
+    runCookingLoop(orderId);
+  }, [runCookingLoop]);
 
   const handleStartFromStaff = useCallback(() => {
     const pendingOrder = orders.find(o => o.status === 'not_started');
@@ -65,11 +35,11 @@ const KitchenContent: React.FC = () => {
       <HeroBanner />
       <OrderQueue 
         onStartOrder={handleStartOrder} 
-        isCooking={cookingState.isActive} 
+        isCooking={isCooking} 
       />
       <KitchenStaff 
         onStartOrder={handleStartFromStaff}
-        isCooking={cookingState.isActive}
+        isCooking={isCooking}
       />
       <InventoryPanel />
       <TimelineLog />

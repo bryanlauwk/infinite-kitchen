@@ -1,1 +1,10 @@
 project_id = "tvmploxkzwsllvjdafmd"
+
+[functions.cooking-agent]
+verify_jwt = false
+
+[functions.alchemy-agent]
+verify_jwt = false
+
+[functions.judge-agent]
+verify_jwt = false
