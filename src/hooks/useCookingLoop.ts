@@ -76,8 +76,12 @@ export function useCookingLoop() {
           });
         }
 
-        // Update conversation history
+        // Update conversation history - both React state and local array
         addConversationMessage({
+          role: 'assistant',
+          content: cookingResponse.thinking || '',
+        });
+        conversationHistory.push({
           role: 'assistant',
           content: cookingResponse.thinking || '',
         });
@@ -188,8 +192,13 @@ export function useCookingLoop() {
         addToInventory(newIngredient);
         currentInventory = [...currentInventory, newIngredient];
 
-        // Update conversation with function result
+        // Update conversation with function result - both React state and local array
         addConversationMessage({
+          role: 'function',
+          name: actionName,
+          content: `Result: ${alchemyResult.emoji} ${alchemyResult.resultName} - ${alchemyResult.description}. New ingredient ID: ${alchemyResult.resultId}`,
+        });
+        conversationHistory.push({
           role: 'function',
           name: actionName,
           content: `Result: ${alchemyResult.emoji} ${alchemyResult.resultName} - ${alchemyResult.description}. New ingredient ID: ${alchemyResult.resultId}`,

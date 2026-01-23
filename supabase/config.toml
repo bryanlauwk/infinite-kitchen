@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.judge-agent]
 verify_jwt = false
+
+[functions.elevenlabs-sfx]
+verify_jwt = false
