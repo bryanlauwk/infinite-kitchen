@@ -1,344 +1,386 @@
 
 
-# Function Call Kitchen - Implementation Plan
+# Infinite Kitchen - Implementation Plan
 
-## Project Summary
+## Overview
 
-A Multi-Agent Orchestration System simulating a professional kitchen environment where three specialized AI agents collaborate to fulfill cooking orders. The app showcases "reasoning-action-result" loops using Gemini 3 Flash via the Lovable AI Gateway.
+Transform the Function Call Kitchen into an **Infinite Kitchen** where:
+1. Three AI agents (Cooking, Alchemy, Judge) power the real cooking loop
+2. Users can type any dish they want - the AI figures out the recipe
+3. New ingredients discovered during cooking get added to the global inventory
+4. The kitchen grows infinitely as more dishes are cooked
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```text
-+------------------+     +-------------------+     +----------------+
-|   USER INTERFACE |     |   COOKING AGENT   |     | ALCHEMY AGENT  |
-|                  |     |   (Orchestrator)  |     | (Transformer)  |
-|  - Order Queue   |<--->|                   |<--->|                |
-|  - Inventory     |     |  Plans recipes    |     | Resolves what  |
-|  - Kitchen Log   |     |  Calls functions  |     | happens when   |
-|  - Agent Cards   |     |  Manages workflow |     | Action(Item[]) |
-+------------------+     +-------------------+     +----------------+
-                                  |
-                                  v
-                         +----------------+
-                         |  JUDGE AGENT   |
-                         |  (Verifier)    |
-                         |                |
-                         | Validates if   |
-                         | dish matches   |
-                         | the order      |
-                         +----------------+
+USER INPUT                    EDGE FUNCTIONS                     STATE
+-----------                   --------------                     -----
+"Pad Thai"     ──────►  [cooking-agent]  ◄──────►  Inventory[]
+                              │                         │
+                              │ function call           │ new items
+                              ▼                         ▼
+                        [alchemy-agent]  ──────►  Generated[]
+                              │
+                              │ serve()
+                              ▼
+                        [judge-agent]   ──────►  Order Status
 ```
 
 ---
 
-## Phase 1: Foundation and Design System
+## Part 1: Edge Functions
 
-### 1.1 Custom Theme - "Chef-Terminal Chic"
+### 1.1 Cooking Agent (`supabase/functions/cooking-agent/index.ts`)
 
-Update the design system with the specified color palette and typography:
+The orchestrator that plans and executes recipes using function calling.
 
-- **Primary Colors**: High-contrast black/white canvas
-- **Status Colors**: Gemini Blue (intelligence), Gold (processing), Green (success), Red (failure)
-- **Typography**: Space Mono / monospace fonts throughout
-- **Checkered Pattern**: CSS pattern for vertical borders
-
-### 1.2 Core Layout Components
-
-Create the main layout structure:
-
-- **KitchenLayout**: Main container with checkered side borders
-- **Header**: App title with chef emoji branding
-- **Footer**: Status bar showing active agent
-
----
-
-## Phase 2: Data Layer and State Management
-
-### 2.1 Type Definitions
-
-```text
-Types to create:
-- Ingredient: { id, name, emoji, category }
-- Tool: { id, name, emoji, description, parameters }
-- Order: { id, dishName, status, timestamp }
-- TimelineEvent: { id, type, content, agent, timestamp }
-- AgentState: { name, status, currentAction, thinking }
+**Request:**
+```json
+{
+  "inventory": [{ "id": "egg", "name": "egg", "emoji": "🥚", ... }],
+  "order": { "dishName": "Scrambled Eggs", ... },
+  "conversationHistory": [{ "role": "system", "content": "..." }]
+}
 ```
 
-### 2.2 Predefined Data
+**Behavior:**
+- Receives full inventory of available ingredients
+- Uses Gemini 3 Flash with 102 tool definitions (all cooking functions)
+- Returns either a function call or the final `serve()` action
+- Includes thinking/reasoning in the response for the timeline
 
-Create comprehensive data files:
-
-- **ingredients.ts**: 100+ base ingredients organized by category
-  - Proteins (eggs, chicken, beef, fish, tofu...)
-  - Vegetables (onion, garlic, tomato, carrot...)
-  - Dairy (butter, milk, cheese, cream...)
-  - Grains (rice, flour, pasta, bread...)
-  - Spices (salt, pepper, cumin, oregano...)
-  - Liquids (oil, vinegar, wine, stock...)
-
-- **tools.ts**: 102 cooking functions mapped to Gemini tools
-  - Heat methods (fry, boil, steam, sous_vide, roast...)
-  - Cutting methods (chop, dice, julienne, mince...)
-  - Mixing methods (stir, whisk, fold, knead...)
-  - Preparation (sift, strain, marinate, season...)
-
-### 2.3 State Management
-
-Using React Context and hooks:
-
-- **KitchenContext**: Global state for inventory, orders, timeline
-- **AgentContext**: State for all three agents
-- **useInventory**: Hook for managing ingredient state
-- **useOrders**: Hook for order queue management
-- **useTimeline**: Hook for event logging
-
----
-
-## Phase 3: Backend - Edge Functions
-
-### 3.1 Cooking Agent Edge Function
-
-**Path**: `supabase/functions/cooking-agent/index.ts`
-
-- Receives current inventory and active order
-- Uses function calling with 102 tool definitions
-- Returns next action or serve() call
-- Streams thinking process to UI
-
-### 3.2 Alchemy Agent Edge Function
-
-**Path**: `supabase/functions/alchemy-agent/index.ts`
-
-- Receives action name and ingredient parameters
-- Uses JSON mode with strict schema
-- Returns: `{ result_name, emoji, description }`
-- Stateless - no memory of orders
-
-### 3.3 Judge Agent Edge Function
-
-**Path**: `supabase/functions/judge-agent/index.ts`
-
-- Receives served dish name and original order
-- Performs semantic similarity matching
-- Returns: `{ match: boolean, confidence: number, reasoning: string }`
-
----
-
-## Phase 4: UI Components
-
-### 4.1 Tile System
-
-- **IngredientTile**: Displays ingredient with emoji and name
-- **ResultTile**: Shows newly created items with slide-in animation
-- **ActionTile**: Displays function calls in code-block style
-
-### 4.2 Main Sections
-
-#### Inventory Panel
-- Grid of ingredient tiles
-- Visual feedback for items being used
-- "Glow" effect on AI-selected items (Gemini Blue)
-
-#### Order Queue
-- Stack of pending orders
-- Active order highlighted (Gold)
-- Completed orders (Green) / Failed orders (Red)
-- "Add Order" input field
-
-#### Kitchen Log (Timeline)
-- Horizontal scrolling event stream
-- Event types: Thinking, Action, Result, Serve
-- Real-time updates with typing indicators
-- Agent emoji attribution
-
-#### Agent Cards
-- Three cards showing agent status
-- Simplified thinking display (plain English)
-- Visual status indicators (idle/active/complete)
-
-### 4.3 Control Panel
-
-- **Start Cooking**: Initiates the cooking loop
-- **Add Order**: Input for custom dish requests
-- **Reset Kitchen**: Clears inventory to base ingredients
-
----
-
-## Phase 5: The Cooking Loop
-
-### 5.1 Orchestration Flow
-
-```text
-1. User clicks "Start Cooking" with an active order
-2. UI locks to "Cooking" state
-3. Cooking Agent receives:
-   - Current inventory
-   - Target dish (order)
-4. Cooking Agent responds with function call
-5. UI displays thinking + action in timeline
-6. Alchemy Agent processes the action:
-   - Input: fry([egg])
-   - Output: { result_name: "Fried Egg", emoji: "🍳" }
-7. New item added to inventory
-8. Result fed back to Cooking Agent
-9. Loop continues until serve() is called
-10. Judge Agent validates the result
-11. Order marked complete or failed
+**Response:**
+```json
+{
+  "thinking": "I'll start by cracking the eggs into a bowl...",
+  "functionCall": {
+    "name": "crack",
+    "ingredients": ["egg", "egg"]
+  },
+  "isComplete": false
+}
 ```
 
-### 5.2 State Transitions
+Or when serving:
+```json
+{
+  "thinking": "The dish is ready to serve!",
+  "functionCall": {
+    "name": "serve",
+    "ingredients": ["seasoned_scrambled_eggs"]
+  },
+  "isComplete": true
+}
+```
 
-```text
-Order States:
-  pending -> active -> cooking -> served -> (verified | rejected)
+### 1.2 Alchemy Agent (`supabase/functions/alchemy-agent/index.ts`)
 
-Agent States:
-  idle -> thinking -> acting -> idle
+The state transformer that determines what happens when Action(Ingredients) is executed.
+
+**Request:**
+```json
+{
+  "action": "crack",
+  "ingredients": [
+    { "id": "egg", "name": "egg", "emoji": "🥚" }
+  ]
+}
+```
+
+**Behavior:**
+- Stateless - no knowledge of orders
+- Uses JSON mode with strict responseSchema
+- Creatively determines the result of combining ingredients with an action
+- Returns a new ingredient that can be used in future steps
+
+**Response:**
+```json
+{
+  "resultName": "Raw Egg Mixture",
+  "resultId": "raw_egg_mixture",
+  "emoji": "🥚",
+  "description": "Fresh eggs cracked and ready for cooking"
+}
+```
+
+### 1.3 Judge Agent (`supabase/functions/judge-agent/index.ts`)
+
+The semantic validator that compares served dish to order.
+
+**Request:**
+```json
+{
+  "servedDish": "Seasoned Scrambled Eggs",
+  "orderName": "Scrambled Eggs"
+}
+```
+
+**Behavior:**
+- Uses semantic similarity rather than exact string matching
+- "Sunny Side Up" should match "Fried Eggs"
+- Returns confidence score and reasoning
+
+**Response:**
+```json
+{
+  "match": true,
+  "confidence": 95,
+  "reasoning": "Seasoned Scrambled Eggs is a valid preparation of Scrambled Eggs with added seasoning."
+}
 ```
 
 ---
 
-## Phase 6: Visual Polish
+## Part 2: Custom Order Input (Infinite Kitchen Core)
 
-### 6.1 Animations
+### 2.1 New Component: `AddOrderInput`
 
-- **SlideIn**: New ingredients appearing
-- **Pulse**: Active ingredient selection
-- **Fade**: Completed timeline events
-- **Shake**: Failed order indication
+A text input in the Orders section that lets users type any dish name.
 
-### 6.2 Loading States
+```text
++----------------------------------------------------------+
+|  ORDERS                                                   |
+|  Customer orders to fulfill with function calling         |
+|                                                           |
+|  +--------------------------------------------------+    |
+|  | 🍳 What would you like to cook?                   |    |
+|  | [Type any dish name...              ] [+ Add]    |    |
+|  +--------------------------------------------------+    |
+|                                                           |
+|  [Fried Eggs] [Avocado Toast] [Beef Stir-fry] ...       |
++----------------------------------------------------------+
+```
 
-- Typing indicator for agent thinking
-- Skeleton tiles during inference
-- Progress bar for multi-step recipes
+**Features:**
+- Placeholder examples cycle through suggestions
+- When order is added, system assigns an emoji and difficulty
+- Can add any dish - AI will figure out how to cook it
+- Works with base ingredients OR discovers new ones
 
-### 6.3 Accessibility
+### 2.2 Difficulty Estimation
 
-- ARIA labels for all interactive elements
-- Keyboard navigation support
-- Screen reader announcements for state changes
-- High contrast ratios maintained
+When a custom order is added, we can optionally call a lightweight AI check to estimate difficulty based on:
+- Number of likely steps
+- Complexity of techniques
+- Whether it requires generated ingredients
+
+Or simply default to "intermediate" for all custom orders (simpler approach).
 
 ---
 
-## File Structure
+## Part 3: The Cooking Loop (Frontend Orchestration)
+
+### 3.1 New Hook: `useCookingLoop`
+
+Central orchestration logic that manages the cooking process:
 
 ```text
-src/
-├── components/
-│   ├── kitchen/
-│   │   ├── KitchenLayout.tsx
-│   │   ├── Header.tsx
-│   │   ├── InventoryPanel.tsx
-│   │   ├── OrderQueue.tsx
-│   │   ├── TimelineLog.tsx
-│   │   ├── AgentCards.tsx
-│   │   └── ControlPanel.tsx
-│   ├── tiles/
-│   │   ├── IngredientTile.tsx
-│   │   ├── ActionTile.tsx
-│   │   └── ResultTile.tsx
-│   └── agents/
-│       ├── AgentCard.tsx
-│       └── ThinkingDisplay.tsx
-├── context/
-│   ├── KitchenContext.tsx
-│   └── AgentContext.tsx
-├── data/
-│   ├── ingredients.ts
-│   └── tools.ts
-├── hooks/
-│   ├── useInventory.ts
-│   ├── useOrders.ts
-│   ├── useTimeline.ts
-│   └── useCookingLoop.ts
-├── lib/
-│   ├── api.ts
-│   └── types.ts
-├── pages/
-│   └── Index.tsx
-└── index.css (updated theme)
+Flow:
+1. User clicks "Cook" on an order
+2. Lock UI (isCooking = true)
+3. Call cooking-agent with inventory + order
+4. Receive thinking + function call
+5. Add timeline event (thinking)
+6. Add timeline event (action)
+7. Call alchemy-agent with action + ingredients
+8. Receive result
+9. Add result to inventory as new generated ingredient
+10. Add timeline event (result)
+11. Update conversation history
+12. If not serve(): goto step 3
+13. If serve(): call judge-agent
+14. Add timeline event (judge verdict)
+15. Update order status (verified/rejected)
+16. Unlock UI
+```
 
-supabase/
-└── functions/
-    ├── cooking-agent/
-    │   └── index.ts
-    ├── alchemy-agent/
-    │   └── index.ts
-    └── judge-agent/
-        └── index.ts
+### 3.2 State Updates for Infinite Kitchen
+
+**Inventory Growth:**
+- When alchemy-agent returns a result, add it to inventory with `isGenerated: true`
+- Generated ingredients appear in a special "Generated" category
+- These persist across cooking sessions (for the infinite concept)
+- Visual distinction: generated items have a subtle glow or badge
+
+**Timeline Events:**
+- Real-time updates as each step completes
+- Typing indicator while waiting for AI response
+- Function calls displayed in code-block style
+- Results show the new ingredient with emoji
+
+---
+
+## Part 4: UI Enhancements
+
+### 4.1 Inventory Panel Updates
+
+Add visual distinction for generated ingredients:
+
+```text
+INGREDIENTS                                 count: 115
+Select ingredients to use as function arguments
+
+[Base Ingredients]
+🥚 egg  🍗 chicken  🥩 beef  🐟 fish ...
+
+[Generated ✨]
+🍳 Fried Egg  🥚 Raw Egg Mixture  🧀 Grilled Cheese ...
+```
+
+### 4.2 Order Input Enhancement
+
+Add the custom order input field with:
+- Auto-suggest based on common dishes
+- Real-time validation (non-empty)
+- Loading state when adding
+
+### 4.3 Timeline Enhancements
+
+Add more event types for the infinite kitchen:
+- `discovery` - when a new ingredient is created
+- `thinking` - agent reasoning (italicized)
+- `action` - function call (code block)
+- `result` - new ingredient (with emoji)
+
+---
+
+## Part 5: API Service Layer
+
+### 5.1 New File: `src/lib/api.ts`
+
+Centralized API calls to edge functions:
+
+```typescript
+// Call the cooking agent
+async function callCookingAgent(payload: CookingAgentPayload): Promise<CookingAgentResponse>
+
+// Call the alchemy agent  
+async function callAlchemyAgent(payload: AlchemyAgentPayload): Promise<AlchemyResult>
+
+// Call the judge agent
+async function callJudgeAgent(payload: JudgeAgentPayload): Promise<JudgeResult>
+```
+
+All functions use the Supabase client to invoke edge functions with proper headers and error handling.
+
+---
+
+## File Changes Summary
+
+### New Files:
+```text
+supabase/functions/cooking-agent/index.ts    - Orchestrator agent
+supabase/functions/alchemy-agent/index.ts    - State transformer
+supabase/functions/judge-agent/index.ts      - Semantic validator
+src/lib/api.ts                               - API service layer
+src/hooks/useCookingLoop.ts                  - Cooking orchestration
+src/components/kitchen/AddOrderInput.tsx     - Custom order input
+```
+
+### Modified Files:
+```text
+src/context/KitchenContext.tsx  - Add generated ingredients category
+src/pages/Index.tsx             - Wire up real cooking loop
+src/components/kitchen/OrderQueue.tsx      - Add order input
+src/components/kitchen/InventoryPanel.tsx  - Show generated section
+src/components/kitchen/TimelineLog.tsx     - Add new event types
+src/lib/types.ts                - Add API response types
 ```
 
 ---
 
-## Technical Considerations
+## Technical Details
 
-### API Integration
+### Edge Function Configuration
 
-- All AI calls routed through Lovable AI Gateway
-- LOVABLE_API_KEY already configured
-- Using `google/gemini-3-flash-preview` for all agents
-- Streaming enabled for real-time thinking display
+Each function needs in `supabase/config.toml`:
+```toml
+[functions.cooking-agent]
+verify_jwt = false
 
-### Performance
+[functions.alchemy-agent]
+verify_jwt = false
 
-- Debounced state updates during cooking loop
-- Memoized tile components
-- Virtual scrolling for timeline if needed
+[functions.judge-agent]
+verify_jwt = false
+```
+
+### Lovable AI Gateway Usage
+
+All edge functions call the AI Gateway with:
+```typescript
+const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'google/gemini-3-flash-preview',
+    messages: [...],
+    // For cooking-agent: add tools
+    // For alchemy-agent: add response_format for JSON mode
+  }),
+});
+```
 
 ### Error Handling
 
-- Graceful degradation on API failures
-- Retry logic for transient errors
-- User-friendly error messages in timeline
+- Network errors: Show error in timeline, allow retry
+- AI errors: Display "Chef is confused" message
+- Rate limits: Queue with backoff
 
 ---
 
 ## Implementation Order
 
-1. **Foundation**: Theme, types, layout structure
-2. **Data**: Ingredients and tools definitions
-3. **State**: Context providers and hooks
-4. **Backend**: Edge functions for all three agents
-5. **UI Components**: Build from inside out (tiles -> panels -> layout)
-6. **Orchestration**: The cooking loop logic
-7. **Polish**: Animations, loading states, accessibility
+1. **Edge Functions** - Create all three agents
+2. **API Layer** - Build the service functions
+3. **Cooking Loop Hook** - Implement orchestration
+4. **Order Input** - Add custom dish input
+5. **Wire Everything** - Connect to Index.tsx
+6. **Visual Polish** - Generated ingredients styling
 
 ---
 
-## Sample Interaction
+## Sample Infinite Kitchen Flow
 
 ```text
-User: Adds order "Scrambled Eggs"
-User: Clicks "Start Cooking"
+User types: "Eggs Benedict"
+System adds order with emoji 🍳 and difficulty "hard"
+User clicks "Cook"
 
 Timeline:
-🧑‍🍳 "I'll prepare scrambled eggs. First, I need to crack some eggs."
-→ crack([egg, egg])
-🧑‍🔬 "Raw eggs ready for cooking"
-   Result: Raw Egg Mixture 🥚
+👨‍🍳 "Eggs Benedict requires poached eggs, English muffin, and hollandaise.
+     Let me start by preparing the hollandaise sauce..."
+→ melt([butter])
+👨‍🔬 "Butter liquefied"
+   Result: Melted Butter 🧈 ← NEW INGREDIENT ADDED!
 
-🧑‍🍳 "Now I'll add butter and scramble over low heat."
-→ scramble([raw_egg_mixture, butter])
-🧑‍🔬 "Eggs transformed with gentle heat"
-   Result: Scrambled Eggs 🍳
+👨‍🍳 "Now I'll whisk egg yolks with lemon..."
+→ whisk([egg, lemon, melted_butter])
+👨‍🔬 "Rich emulsion formed"
+   Result: Hollandaise Sauce 🍯 ← NEW INGREDIENT ADDED!
 
-🧑‍🍳 "Adding a pinch of seasoning for flavor."
-→ season([scrambled_eggs, salt, pepper])
-🧑‍🔬 "Seasoned to perfection"
-   Result: Seasoned Scrambled Eggs 🧂🍳
+👨‍🍳 "Poaching the eggs gently..."
+→ poach([egg])
+👨‍🔬 "Perfectly runny yolk"
+   Result: Poached Egg 🥚 ← NEW INGREDIENT ADDED!
 
-🧑‍🍳 "Dish complete! Serving now."
-→ serve([seasoned_scrambled_eggs])
+... (more steps)
 
-🧑‍⚖️ "Comparing 'Seasoned Scrambled Eggs' to order 'Scrambled Eggs'"
-   Verdict: ✅ MATCH (95% confidence)
-   "The dish satisfies the order requirements."
+→ serve([assembled_eggs_benedict])
 
-Order Status: COMPLETED ✅
+👨‍⚖️ "Comparing 'Eggs Benedict with Hollandaise' to 'Eggs Benedict'"
+   Verdict: ✅ MATCH (98% confidence)
+
+NEW INGREDIENTS DISCOVERED: 3
+- Melted Butter 🧈
+- Hollandaise Sauce 🍯
+- Poached Egg 🥚
+
+These are now available for future recipes!
 ```
 
