@@ -22,7 +22,7 @@ export const KitchenStaff: React.FC<KitchenStaffProps> = ({ onStartOrder, isCook
           <div className="mb-3">
             <h2 className="font-bold uppercase text-sm tracking-wide">Kitchen Staff</h2>
             <p className="text-xs text-muted-foreground">
-              Three specialized Gemini 3 Flash agents
+              Three AI chefs working together to cook your order
             </p>
           </div>
           

@@ -8,10 +8,10 @@ export const Header: React.FC = () => {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Function Calling Kitchen
+            Infinite Kitchen
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Challenge Gemini 3 Flash's function calling capabilities:
+            Where AI chefs turn any recipe into reality
           </p>
         </div>
         

@@ -22,7 +22,7 @@ export const InventoryPanel: React.FC = () => {
             <div>
               <h2 className="font-bold uppercase text-sm tracking-wide">Ingredients</h2>
               <p className="text-xs text-muted-foreground">
-                Select ingredients to use as function arguments
+                Base ingredients and items discovered while cooking
               </p>
             </div>
             <span className="text-xs text-muted-foreground">
@@ -69,7 +69,7 @@ export const InventoryPanel: React.FC = () => {
             <div>
               <h2 className="font-bold uppercase text-sm tracking-wide">Tools</h2>
               <p className="text-xs text-muted-foreground">
-                Use function calls to combine ingredients
+                Kitchen techniques the AI can use
               </p>
             </div>
             <span className="text-xs text-muted-foreground">

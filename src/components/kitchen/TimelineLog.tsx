@@ -84,7 +84,7 @@ export const TimelineLog: React.FC = () => {
         >
           {timeline.length === 0 ? (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground italic">
-              Select ingredients and click an action to start cooking
+              Add an order and click Cook to see the magic happen
             </div>
           ) : (
             <div className="flex gap-3 pb-2">
