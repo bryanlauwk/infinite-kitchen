@@ -192,14 +192,22 @@ RULES:
 IMPORTANT: Always use ingredient IDs (not names) in function calls.
 When you're done cooking, call serve() with the final dish ingredient.`;
 
+    // Build messages - only add user prompt on first call
+    const hasHistory = conversationHistory && conversationHistory.length > 0;
     const messages = [
       { role: "system", content: systemPrompt },
-      ...conversationHistory.map((m: { role: string; content: string; name?: string }) => ({
+      ...(hasHistory ? conversationHistory.map((m: { role: string; content: string; name?: string }) => ({
         role: m.role,
         content: m.content,
         ...(m.name && { name: m.name })
-      })),
-      { role: "user", content: `Please cook: ${order.dishName}. What's your next step?` }
+      })) : []),
+      // Only add user prompt if this is the first call or to continue
+      { 
+        role: "user", 
+        content: hasHistory 
+          ? "Continue cooking. What's your next step based on the results so far?" 
+          : `Please cook: ${order.dishName}. Plan and execute step by step.`
+      }
     ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

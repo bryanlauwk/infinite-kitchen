@@ -3,6 +3,7 @@ import { useKitchen } from '@/context/KitchenContext';
 import { useAgents } from '@/context/AgentContext';
 import { callCookingAgent, callAlchemyAgent, callJudgeAgent } from '@/lib/api';
 import { ConversationMessage, Ingredient } from '@/lib/types';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { toast } from 'sonner';
 
 const MAX_ITERATIONS = 20; // Safety limit
@@ -23,6 +24,14 @@ export function useCookingLoop() {
   } = useKitchen();
   
   const { setAgentStatus, setAgentThinking } = useAgents();
+  const { 
+    startAmbience, 
+    stopAmbience, 
+    playActionSound, 
+    playServeSound, 
+    playSuccessSound, 
+    playErrorSound 
+  } = useSoundEffects();
   const abortRef = useRef(false);
 
   const runCookingLoop = useCallback(async (orderId: string) => {
@@ -45,6 +54,9 @@ export function useCookingLoop() {
     let servedDishName = '';
 
     try {
+      // Start kitchen ambience
+      await startAmbience();
+      
       // Main cooking loop
       while (!abortRef.current && iterations < MAX_ITERATIONS) {
         iterations++;
@@ -76,23 +88,34 @@ export function useCookingLoop() {
           });
         }
 
-        // Update conversation history - both React state and local array
-        addConversationMessage({
-          role: 'assistant',
-          content: cookingResponse.thinking || '',
-        });
-        conversationHistory.push({
-          role: 'assistant',
-          content: cookingResponse.thinking || '',
-        });
-
         // Check if no function call (unusual - might need to prompt again)
         if (!cookingResponse.functionCall) {
           console.warn('No function call from cooking agent');
+          // Still record the thinking in history
+          addConversationMessage({
+            role: 'assistant',
+            content: cookingResponse.thinking || '',
+          });
+          conversationHistory.push({
+            role: 'assistant',
+            content: cookingResponse.thinking || '',
+          });
           continue;
         }
 
         const { name: actionName, ingredients: ingredientIds } = cookingResponse.functionCall;
+
+        // Record assistant's thinking + action in history
+        // We format it as "thinking\n\nAction: action_name(ingredients)" so the AI knows what it did
+        const assistantContent = `${cookingResponse.thinking || ''}\n\nAction taken: ${actionName}(${ingredientIds.join(', ')})`;
+        addConversationMessage({
+          role: 'assistant',
+          content: assistantContent,
+        });
+        conversationHistory.push({
+          role: 'assistant',
+          content: assistantContent,
+        });
 
         // Add action to timeline
         addTimelineEvent({
@@ -107,6 +130,9 @@ export function useCookingLoop() {
 
         setAgentStatus('chef', 'acting');
         setAgentThinking('chef', `${actionName}(${ingredientIds.join(', ')})`);
+        
+        // Play sound for this cooking action
+        playActionSound(actionName);
 
         // Check if this is the serve action
         if (cookingResponse.isComplete || actionName === 'serve') {
@@ -121,6 +147,9 @@ export function useCookingLoop() {
             agent: 'chef',
             content: `Serving: ${servedDishName}`,
           });
+
+          // Play serve sound
+          await playServeSound();
 
           updateOrderStatus(orderId, 'served', servedDishName);
           break;
@@ -240,6 +269,13 @@ export function useCookingLoop() {
         setJudgeResult(orderId, judgeResult);
         updateOrderStatus(orderId, judgeResult.match ? 'verified' : 'rejected', servedDishName);
 
+        // Play success or error sound based on judge result
+        if (judgeResult.match) {
+          await playSuccessSound();
+        } else {
+          await playErrorSound();
+        }
+
         toast[judgeResult.match ? 'success' : 'error'](
           judgeResult.match 
             ? `Order fulfilled! ${judgeResult.reasoning}`
@@ -259,6 +295,9 @@ export function useCookingLoop() {
       toast.error(error instanceof Error ? error.message : 'Cooking failed');
       updateOrderStatus(orderId, 'rejected');
     } finally {
+      // Stop kitchen ambience
+      stopAmbience();
+      
       // Reset all states
       setCookingActive(false);
       setAgentStatus('chef', 'idle');
@@ -281,6 +320,12 @@ export function useCookingLoop() {
     clearConversation,
     setAgentStatus,
     setAgentThinking,
+    startAmbience,
+    stopAmbience,
+    playActionSound,
+    playServeSound,
+    playSuccessSound,
+    playErrorSound,
   ]);
 
   const abortCooking = useCallback(() => {
