@@ -5,12 +5,11 @@ import { KitchenLayout } from '@/components/kitchen/KitchenLayout';
 import { Header } from '@/components/kitchen/Header';
 import { HeroBanner } from '@/components/kitchen/HeroBanner';
 import { OrderQueue } from '@/components/kitchen/OrderQueue';
-import { KitchenStaff } from '@/components/kitchen/KitchenStaff';
 import { InventoryPanel } from '@/components/kitchen/InventoryPanel';
-import { TimelineLog } from '@/components/kitchen/TimelineLog';
+import { KitchenLog } from '@/components/kitchen/KitchenLog';
+import { DishesArchive } from '@/components/kitchen/DishesArchive';
 import { KitchenProvider } from '@/context/KitchenContext';
 import { AgentProvider } from '@/context/AgentContext';
-import { toast } from 'sonner';
 
 const KitchenContent: React.FC = () => {
   const { orders } = useKitchen();
@@ -20,15 +19,6 @@ const KitchenContent: React.FC = () => {
     runCookingLoop(orderId);
   }, [runCookingLoop]);
 
-  const handleStartFromStaff = useCallback(() => {
-    const pendingOrder = orders.find(o => o.status === 'not_started');
-    if (pendingOrder) {
-      handleStartOrder(pendingOrder.id);
-    } else {
-      toast.error('No pending orders available');
-    }
-  }, [orders, handleStartOrder]);
-
   return (
     <KitchenLayout>
       <Header />
@@ -37,12 +27,9 @@ const KitchenContent: React.FC = () => {
         onStartOrder={handleStartOrder} 
         isCooking={isCooking} 
       />
-      <KitchenStaff 
-        onStartOrder={handleStartFromStaff}
-        isCooking={isCooking}
-      />
       <InventoryPanel />
-      <TimelineLog />
+      <KitchenLog />
+      <DishesArchive />
     </KitchenLayout>
   );
 };

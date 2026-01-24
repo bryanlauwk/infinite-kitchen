@@ -1,5 +1,5 @@
 import React from 'react';
-import { Order, OrderDifficulty } from '@/lib/types';
+import { Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -9,53 +9,24 @@ interface OrderCardProps {
   isDisabled?: boolean;
 }
 
-const difficultyColors: Record<OrderDifficulty, string> = {
-  easy: 'bg-easy text-easy-foreground',
-  intermediate: 'bg-intermediate text-intermediate-foreground',
-  hard: 'bg-hard text-hard-foreground',
-};
-
-const statusLabels: Record<Order['status'], string> = {
-  not_started: 'Not started',
-  active: 'Active',
-  cooking: 'Cooking...',
-  served: 'Served',
-  verified: 'Verified ✓',
-  rejected: 'Rejected ✗',
-};
-
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled }) => {
   const isActive = order.status === 'active' || order.status === 'cooking';
-  const isComplete = order.status === 'verified' || order.status === 'rejected';
+  const isComplete = order.status === 'verified' || order.status === 'rejected' || order.status === 'served';
   
   return (
     <div 
       className={cn(
         "flex-shrink-0 w-32 p-3 border border-border rounded-lg bg-card transition-all",
-        isActive && "border-processing ring-2 ring-processing/20",
-        order.status === 'verified' && "border-success",
-        order.status === 'rejected' && "border-destructive"
+        isActive && "border-processing ring-2 ring-processing/20"
       )}
     >
-      <div className="flex items-start justify-between mb-2">
-        <span 
-          className={cn(
-            "text-[10px] font-bold uppercase px-1.5 py-0.5 rounded",
-            difficultyColors[order.difficulty]
-          )}
-        >
-          {order.difficulty}
-        </span>
-        <span className="text-2xl">{order.emoji}</span>
+      <div className="flex items-center justify-center mb-2">
+        <span className="text-3xl">{order.emoji}</span>
       </div>
       
-      <h3 className="font-bold text-sm leading-tight mb-1 truncate">
+      <h3 className="font-bold text-sm leading-tight mb-3 text-center truncate">
         {order.dishName}
       </h3>
-      
-      <p className="text-xs text-muted-foreground mb-3">
-        {statusLabels[order.status]}
-      </p>
       
       {!isComplete && (
         <Button
@@ -65,16 +36,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
           onClick={() => onStart(order.id)}
           disabled={isDisabled || isActive}
         >
-          {isActive ? 'Cooking...' : 'Start'}
+          {isActive ? '...' : 'Cook'}
         </Button>
       )}
       
       {isComplete && (
-        <div className={cn(
-          "text-xs font-bold text-center py-1 rounded",
-          order.status === 'verified' ? "text-success" : "text-destructive"
-        )}>
-          {order.status === 'verified' ? '✓ Complete' : '✗ Failed'}
+        <div className="text-xs text-center py-1 text-muted-foreground">
+          Served
         </div>
       )}
     </div>
