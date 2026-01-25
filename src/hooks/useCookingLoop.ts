@@ -27,7 +27,8 @@ export function useCookingLoop() {
   const { 
     startAmbience, 
     stopAmbience, 
-    playActionSound, 
+    playActionSound,
+    playStartSound, 
     playServeSound, 
     playSuccessSound, 
     playErrorSound 
@@ -54,8 +55,8 @@ export function useCookingLoop() {
     let servedDishName = '';
 
     try {
-      // Start kitchen ambience
-      await startAmbience();
+      // Start kitchen ambience and play start sound
+      await Promise.all([startAmbience(), playStartSound()]);
       
       // Main cooking loop
       while (!abortRef.current && iterations < MAX_ITERATIONS) {
@@ -131,8 +132,8 @@ export function useCookingLoop() {
         setAgentStatus('chef', 'acting');
         setAgentThinking('chef', `${actionName}(${ingredientIds.join(', ')})`);
         
-        // Play sound for this cooking action
-        playActionSound(actionName);
+        // Play sound for this cooking action with ingredient context
+        playActionSound(actionName, ingredientIds);
 
         // Check if this is the serve action
         if (cookingResponse.isComplete || actionName === 'serve') {
@@ -323,6 +324,7 @@ export function useCookingLoop() {
     startAmbience,
     stopAmbience,
     playActionSound,
+    playStartSound,
     playServeSound,
     playSuccessSound,
     playErrorSound,
