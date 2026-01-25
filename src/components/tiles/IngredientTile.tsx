@@ -16,7 +16,12 @@ export const IngredientTile: React.FC<IngredientTileProps> = ({ ingredient, isNe
       )}
     >
       <span className="text-base opacity-60">{ingredient.emoji}</span>
-      <span className="text-sm truncate">{ingredient.name}</span>
+      <span className="text-sm truncate flex-1">{ingredient.name}</span>
+      {isNew && (
+        <span className="text-[10px] font-medium text-gemini uppercase tracking-wider">
+          NEW
+        </span>
+      )}
     </div>
   );
 };

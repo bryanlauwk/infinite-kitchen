@@ -20,6 +20,13 @@ export type IngredientCategory =
   | 'nuts'
   | 'generated';
 
+export type IngredientGroup = 
+  | 'discovered'
+  | 'primary'
+  | 'macronutrients'
+  | 'micronutrients'
+  | 'culinary';
+
 export interface Tool {
   id: string;
   name: string;
