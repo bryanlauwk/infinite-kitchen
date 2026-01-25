@@ -1,142 +1,284 @@
 // Sound Effects Configuration for Infinite Kitchen
-// Maps cooking actions to ElevenLabs SFX prompts
+// Maps cooking actions to ElevenLabs SFX prompts with ingredient awareness
 
-export const actionSounds: Record<string, string> = {
-  // Heat actions
-  grill: "sizzling meat on a hot grill with crackling fire",
-  pan_fry: "sizzling frying pan with hot oil and food cooking",
-  saute: "gentle sizzling in a pan with wooden spoon stirring",
-  sear: "intense sizzling of meat hitting a hot pan",
-  roast: "oven roasting with gentle crackling",
-  bake: "oven baking with soft ambient heat",
-  broil: "broiler heating with intense overhead heat",
-  toast: "toaster popping with crispy sound",
-  char: "charring food with smoky sizzle",
-  flame: "open flame cooking with whooshing fire",
-  smoke: "smoker with gentle hissing smoke",
+import { ToolCategory } from './types';
+
+// Detailed technique-specific sound prompts
+// These are highly descriptive to generate realistic, varied cooking sounds
+export const techniqueSounds: Record<string, string> = {
+  // ===== HEAT TECHNIQUES =====
+  grill: "charcoal grill sizzling with meat fat dripping onto hot coals, flames licking, outdoor barbecue atmosphere",
+  pan_fry: "cast iron skillet sizzling intensely with butter foam and food crackling in hot pan",
+  saute: "stainless steel pan with olive oil shimmering, vegetables hitting hot surface, quick tossing sounds",
+  sear: "heavy searing sound of cold meat hitting screaming hot cast iron, violent sizzle and smoke",
+  roast: "oven roasting with fat dripping and splattering, gentle crackling of browning meat",
+  bake: "quiet oven ambience with occasional bubbling and crust forming sounds",
+  broil: "intense overhead heat with caramelization sizzle, cheese melting and bubbling",
+  toast: "bread crisping in toaster, golden crackling texture forming",
+  char: "aggressive charring with smoking and intense blackening sizzle",
+  flambe: "dramatic whoosh of alcohol igniting, flames crackling then subsiding",
+  smoke: "smoker with wood chips smoldering, gentle hissing and aromatic smoke",
+  fry: "hot oil frying with steady bubbling sizzle, food turning golden",
+  stew: "thick liquid bubbling slowly with occasional plop and gentle simmer",
+  sous_vide: "water bath circulator humming, gentle water movement",
   
-  // Liquid actions
-  boil: "bubbling boiling water in a pot",
-  simmer: "gentle simmering liquid with occasional bubbles",
-  poach: "gentle water poaching with soft bubbles",
-  blanch: "quick blanching splash in boiling water",
-  steam: "steam hissing from a pot with lid",
-  braise: "braising liquid bubbling gently",
-  reduce: "liquid reducing with concentrated bubbling",
-  deglaze: "sizzling deglaze with liquid hitting hot pan",
+  // ===== LIQUID TECHNIQUES =====
+  boil: "vigorous rolling boil with large bubbles breaking surface, steam escaping pot",
+  simmer: "gentle low simmer with small lazy bubbles, quiet pot lid rattling",
+  poach: "delicate barely simmering water with occasional soft bubble, egg sliding in",
+  blanch: "quick splash into rapidly boiling water, bubbles intensifying then food removed",
+  steam: "pressurized steam escaping from pot lid, condensation dripping",
+  braise: "low slow bubble in covered pot, rich liquid barely moving",
+  reduce: "concentrated bubbling as sauce thickens, viscous plops",
+  deglaze: "wine or stock hitting screaming hot pan, dramatic sizzle and steam burst",
   
-  // Frying actions
-  deep_fry: "intense bubbling oil deep frying food",
-  shallow_fry: "shallow frying with medium sizzle",
-  stir_fry: "wok stir frying with high heat sizzle",
-  flash_fry: "quick intense frying sizzle",
-  tempura: "tempura frying with light crispy bubbles",
+  // ===== FRYING VARIATIONS =====
+  deep_fry: "food submerging in hot oil, explosive bubbling, crispy coating forming",
+  shallow_fry: "medium oil depth frying, one-sided sizzle with occasional flip",
+  stir_fry: "wok on high flame, rapid metal spatula scraping, intense quick sizzle bursts",
+  flash_fry: "extremely quick intense fry, brief explosive sizzle",
+  tempura: "light tempura batter hitting oil, delicate crispy bubbling",
   
-  // Cutting actions
-  chop: "sharp knife chopping vegetables on cutting board",
-  dice: "rhythmic knife dicing on wooden cutting board",
-  slice: "knife slicing through food cleanly",
-  mince: "rapid mincing with sharp knife",
-  julienne: "precise julienne cutting strokes",
-  cube: "knife cutting into cubes on cutting board",
-  shred: "shredding food with grater or knife",
-  carve: "carving knife slicing through roasted meat",
-  fillet: "filleting knife gliding along fish bones",
-  debone: "knife deboning with occasional bone crack",
-  peel: "vegetable peeler scraping skin off",
-  zest: "zester scraping citrus peel",
-  core: "coring tool removing fruit core",
-  trim: "knife trimming excess from food",
-  score: "knife scoring surface of food",
+  // ===== CUTTING TECHNIQUES =====
+  chop: "chef knife chopping through vegetables on thick wooden cutting board, rhythmic thuds",
+  dice: "precise dicing with sharp knife, multiple quick cuts on wooden board",
+  slice: "long smooth knife strokes slicing through food cleanly",
+  mince: "rapid fine mincing with rocking knife motion, quick light taps",
+  julienne: "precise matchstick cutting, careful thin strokes",
+  cube: "heavy cutting into cubes, solid knife-on-board sounds",
+  shred: "box grater shredding vegetables, repetitive scraping",
+  carve: "long carving knife slicing through roasted meat, tender cuts",
+  fillet: "flexible filleting knife gliding along fish spine, subtle bone separation",
+  debone: "knife working around joints, occasional bone snapping",
+  peel: "vegetable peeler scraping potato skin, curling strips falling",
+  zest: "microplane zesting citrus, fine scratchy scraping",
+  core: "apple corer pushing through fruit with pop",
+  trim: "quick knife trimming fat from meat",
+  score: "shallow deliberate knife cuts across surface",
+  crack: "egg shell cracking crisply against bowl rim, yolk sliding out",
+  crush: "knife flat crushing garlic clove with firm press",
+  pound: "meat tenderizer mallet pounding cutlets flat, thumping impacts",
   
-  // Mixing actions
-  whisk: "wire whisk beating eggs in a metal bowl",
-  stir: "wooden spoon stirring in a pot",
-  blend: "electric blender whirring and mixing",
-  mix: "mixing ingredients together in bowl",
-  fold: "gentle folding with spatula",
-  beat: "vigorous beating with whisk or beater",
-  cream: "creaming butter and sugar together",
-  emulsify: "whisking emulsion together vigorously",
-  whip: "whipping cream or eggs to peaks",
-  aerate: "aerating mixture with gentle folding",
+  // ===== MIXING TECHNIQUES =====
+  whisk: "wire whisk rapidly beating eggs in metal bowl, airy whipping sounds",
+  stir: "wooden spoon stirring thick batter in ceramic bowl, scraping sides",
+  blend: "electric blender motor whirring at high speed, liquid vortex",
+  mix: "hand mixing ingredients in bowl with spoon, ingredients combining",
+  fold: "rubber spatula gently folding batter, quiet careful scoops",
+  beat: "electric mixer beating batter, motor humming with thick resistance",
+  cream: "stand mixer creaming butter and sugar until fluffy, paddle spinning",
+  emulsify: "whisking oil into egg yolk, mayonnaise forming",
+  whip: "whisk whipping cream to stiff peaks, increasingly airy sounds",
+  aerate: "gentle folding motion incorporating air into mixture",
+  puree: "immersion blender pureeing soup, motor changing pitch in liquid",
+  toss: "salad tongs tossing greens in large bowl, leaves rustling",
+  combine: "two mixtures coming together, spoon stirring",
+  mash: "potato masher pressing through cooked potatoes, soft squishing",
+  muddle: "wooden muddler crushing mint and lime in glass",
+  scramble: "spatula pushing eggs around hot pan, wet curds forming",
   
-  // Prep actions
-  crack: "egg cracking against bowl edge",
-  crush: "crushing garlic or spices with knife",
-  pound: "meat mallet pounding on cutting board",
-  grind: "grinding spices in mortar and pestle",
-  grate: "grater scraping cheese or vegetables",
-  press: "pressing garlic through press",
-  squeeze: "squeezing citrus juice",
-  drain: "draining water from colander",
-  strain: "straining liquid through sieve",
-  sift: "sifting flour through mesh",
-  knead: "kneading dough on counter",
-  roll: "rolling pin on dough",
-  shape: "shaping dough or food by hand",
-  stuff: "stuffing filling into food",
-  wrap: "wrapping food in wrapper",
-  skewer: "skewering food onto stick",
-  marinate: "pouring marinade over food",
-  brine: "submerging food in brine solution",
-  cure: "rubbing cure onto food",
-  tenderize: "tenderizing meat with mallet",
+  // ===== PREPARATION TECHNIQUES =====
+  marinate: "liquid marinade pouring over meat in dish, splashing",
+  season: "salt and pepper shaker sprinkling, fine granules hitting food",
+  brine: "meat lowering into salt water solution, gentle splash",
+  cure: "salt mixture rubbing onto salmon, grains pressing into flesh",
+  coat: "food dredging through flour, light dusty coating sounds",
+  bread: "food pressing into breadcrumbs, crispy coating adhering",
+  batter: "food dipping into wet batter, dripping excess",
+  stuff: "filling being pushed into cavity, soft squelching",
+  roll: "rolling pin on dough, wooden cylinder pressing",
+  shape: "hands shaping dough balls, soft pressing and forming",
+  sift: "flour sifting through mesh sieve, fine powder falling",
+  strain: "liquid straining through mesh, dripping into bowl",
+  drain: "colander draining pasta water, rushing water sound",
+  rinse: "vegetables rinsing under running faucet water",
+  soak: "dried ingredients lowering into water, gentle submersion",
+  rest: "quiet kitchen ambience, meat resting on board",
+  proof: "yeast dough slowly rising, very quiet ambient",
+  ferment: "fermentation bubbles in jar, occasional pop",
+  pickle: "vegetables lowering into vinegar brine, acidic splash",
+  infuse: "tea steeping in hot water, delicate",
+  grind: "mortar and pestle grinding spices, stone on stone",
+  press: "garlic press squeezing cloves through, soft extrusion",
+  squeeze: "hand squeezing lemon, citrus juice streaming",
+  skewer: "wooden skewer piercing meat chunks, threading sounds",
+  tenderize: "meat mallet thumping raw chicken flat",
+  knead: "hands kneading bread dough on floured counter, stretching and folding",
   
-  // Finishing actions
-  plate: "plating food with gentle placement",
-  garnish: "placing garnish with precision",
-  drizzle: "drizzling sauce over dish",
-  dust: "dusting powder over food",
-  glaze: "brushing glaze over surface",
-  torch: "culinary torch caramelizing surface",
-  rest: "quiet resting period",
-  cool: "food cooling with ambient sounds",
-  chill: "refrigerator door closing",
-  freeze: "freezer with cold air",
-  thaw: "ice melting with dripping",
+  // ===== TEMPERATURE CONTROL =====
+  chill: "refrigerator door opening and closing, cool air",
+  freeze: "freezer door with frost, ice crackling",
+  thaw: "ice melting, water droplets forming and dripping",
+  melt: "butter or chocolate slowly melting, soft liquid spreading",
+  temper: "chocolate tempering with careful stirring, smooth",
+  cool: "hot pan cooling on rack, metal contracting ticks",
+  warm: "gentle warming, soft ambient heat",
+  room_temp: "quiet room temperature resting",
+  preheat: "oven preheating, element clicking and warming",
+  ice_bath: "hot pot plunging into ice water, dramatic temperature change",
   
-  // Serve action
-  serve: "restaurant bell ding for order ready",
+  // ===== FINISHING TECHNIQUES =====
+  caramelize: "sugar melting and browning, crackling caramel forming",
+  glaze: "pastry brush applying shiny glaze, wet strokes",
+  garnish: "tweezers placing microgreens, delicate precise sounds",
+  plate: "food carefully placed on ceramic plate, soft ceramic touch",
+  drizzle: "thin stream of oil or sauce pouring over dish",
+  sprinkle: "fingertips sprinkling herbs, light scattered falling",
+  velvet: "cornstarch slurry coating chicken pieces",
+  age: "quiet aging ambient, cheese wheel in cave",
+  brown: "maillard reaction, food turning golden in pan",
+  crisp: "food becoming crunchy, crackling texture forming",
+  render: "bacon fat slowly rendering out, gentle sizzle",
+  clarify: "butter foam skimming, clear ghee separating",
+  
+  // ===== SERVICE =====
+  serve: "plate sliding onto pass, chef calling order up, kitchen bell ding",
 };
 
-// Default fallback prompts by category
-export const categoryFallbacks: Record<string, string> = {
-  heat: "sizzling cooking sounds on hot surface",
-  cut: "knife cutting on cutting board",
-  mix: "mixing and stirring sounds in bowl",
-  prepare: "food preparation sounds in kitchen",
-  finish: "gentle plating and presentation sounds",
-  temperature: "temperature changing ambient sound",
-  transform: "cooking transformation with steam and sizzle",
+// Ingredient-specific sound modifiers
+// These add context when specific ingredients are being used
+export const ingredientSoundModifiers: Record<string, string> = {
+  // Proteins
+  egg: "egg cracking and sizzling",
+  chicken: "poultry skin crisping",
+  beef: "rich beef searing",
+  pork: "pork fat rendering",
+  fish: "delicate fish skin crisping",
+  shrimp: "quick shrimp sizzle",
+  bacon: "bacon strips crackling and popping",
+  
+  // Vegetables
+  onion: "onion sizzling and softening",
+  garlic: "garlic becoming aromatic",
+  potato: "starchy potato cooking",
+  pepper: "peppers charring",
+  mushroom: "mushrooms releasing moisture",
+  
+  // Liquids
+  wine: "wine deglazing with steam burst",
+  butter: "butter foam and sizzle",
+  oil: "oil shimmering in hot pan",
+  cream: "cream bubbling and thickening",
+  stock: "savory stock simmering",
+  
+  // Grains
+  rice: "rice grains absorbing liquid",
+  pasta: "pasta bubbling in water",
+  bread: "bread crust crackling",
+  
+  // Aromatics
+  herbs: "fresh herbs releasing fragrance",
+  spices: "spices toasting aromatically",
 };
 
-// Background ambience prompt
-export const ambiencePrompt = "busy professional restaurant kitchen background ambience with distant cooking sounds pots clanking and kitchen activity";
+// Background ambient kitchen sounds
+// These loop continuously during cooking
+export const ambiencePrompts = {
+  // Main kitchen ambience - bustling, realistic
+  kitchen: "busy professional restaurant kitchen ambience with chefs calling orders, pots clanking, distant sizzling, ventilation hum, occasional plate sounds, kitchen staff working efficiently",
+  
+  // Alternative ambiences for variety
+  morning: "calm morning kitchen with coffee brewing, eggs frying gently, quiet preparation sounds",
+  rush: "intense dinner rush kitchen with multiple burners going, urgent calls, rapid plating",
+  quiet: "peaceful home kitchen with single pan cooking, subtle ambient hum",
+};
 
-// Success/failure sounds
+// UI and event sounds
 export const uiSounds = {
-  serve: "restaurant service bell ding",
-  success: "cheerful success chime ding",
-  error: "gentle error buzz notification",
-  start: "kitchen timer starting beep",
+  orderReceived: "restaurant ticket printer printing new order, paper ripping",
+  serve: "service bell ding with plate sliding onto pass",
+  success: "satisfied chef hmm with soft positive chime",
+  error: "kitchen timer urgent beeping alert",
+  start: "gas burner igniting with click and whoosh",
+  complete: "order complete with gentle triumphant tone",
 };
 
-// Get sound prompt for an action
-export function getSoundPrompt(action: string): string {
+// Get the most specific sound prompt for an action + ingredients combo
+export function getSoundPrompt(action: string, ingredients?: string[]): string {
   const normalized = action.toLowerCase().replace(/[-\s]/g, '_');
   
-  if (actionSounds[normalized]) {
-    return actionSounds[normalized];
-  }
+  // Get base technique sound
+  let basePrompt = techniqueSounds[normalized];
   
-  // Try to find a partial match
-  for (const [key, prompt] of Object.entries(actionSounds)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return prompt;
+  if (!basePrompt) {
+    // Try partial match
+    for (const [key, prompt] of Object.entries(techniqueSounds)) {
+      if (normalized.includes(key) || key.includes(normalized)) {
+        basePrompt = prompt;
+        break;
+      }
     }
   }
   
-  // Return generic cooking sound
-  return "cooking sound effect in a busy kitchen";
+  if (!basePrompt) {
+    // Fallback to category-based sound
+    basePrompt = getCategorySound(action);
+  }
+  
+  // If we have ingredients, try to add specificity
+  if (ingredients && ingredients.length > 0) {
+    const ingredientModifier = getIngredientModifier(ingredients);
+    if (ingredientModifier) {
+      return `${basePrompt}, ${ingredientModifier}`;
+    }
+  }
+  
+  return basePrompt;
 }
+
+// Get sound based on tool category
+function getCategorySound(action: string): string {
+  // Map common action patterns to realistic sounds
+  if (/fry|sear|grill|saute|pan/.test(action)) {
+    return "food sizzling in hot pan with oil bubbling";
+  }
+  if (/boil|simmer|steam|poach/.test(action)) {
+    return "water bubbling gently in pot";
+  }
+  if (/chop|slice|dice|cut|mince/.test(action)) {
+    return "sharp knife cutting on wooden board";
+  }
+  if (/whisk|stir|mix|blend/.test(action)) {
+    return "utensil mixing ingredients in bowl";
+  }
+  if (/bake|roast|oven/.test(action)) {
+    return "oven with gentle heat and occasional sizzle";
+  }
+  
+  return "professional kitchen cooking sounds";
+}
+
+// Get modifier based on primary ingredient
+function getIngredientModifier(ingredients: string[]): string | null {
+  for (const ingredient of ingredients) {
+    const normalized = ingredient.toLowerCase();
+    for (const [key, modifier] of Object.entries(ingredientSoundModifiers)) {
+      if (normalized.includes(key)) {
+        return modifier;
+      }
+    }
+  }
+  return null;
+}
+
+// Get ambient sound prompt
+export function getAmbiencePrompt(variant: keyof typeof ambiencePrompts = 'kitchen'): string {
+  return ambiencePrompts[variant];
+}
+
+// Legacy export for compatibility
+export const ambiencePrompt = ambiencePrompts.kitchen;
+
+// Export category fallbacks for edge cases
+export const categoryFallbacks: Record<string, string> = {
+  heat: "food sizzling on hot cooking surface with steam",
+  cut: "sharp knife cutting on wooden cutting board",
+  mix: "mixing utensil stirring in bowl",
+  prepare: "food preparation sounds with various kitchen tools",
+  finish: "delicate plating sounds with gentle ceramic touches",
+  temperature: "temperature change ambient with subtle sounds",
+  transform: "cooking transformation with aromatic sizzle",
+};
+
+// Backwards compatibility - map old generic prompts to new specific ones
+export const actionSounds = techniqueSounds;
