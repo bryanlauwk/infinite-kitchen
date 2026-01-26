@@ -221,6 +221,7 @@ export function useCookingLoop() {
               resultId: alchemyResult.resultId,
               emoji: alchemyResult.emoji,
               description: alchemyResult.description,
+              isDiscovery: true,
             },
           });
         } else {
@@ -233,6 +234,7 @@ export function useCookingLoop() {
               resultId: alchemyResult.resultId,
               emoji: alchemyResult.emoji,
               description: alchemyResult.description,
+              isDiscovery: false,
             },
           });
         }
