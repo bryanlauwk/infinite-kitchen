@@ -113,6 +113,7 @@ export interface AlchemyResult {
   resultId: string;
   emoji: string;
   description: string;
+  isDiscovery?: boolean;
 }
 
 export interface CookingState {
