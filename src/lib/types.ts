@@ -116,6 +116,11 @@ export interface AlchemyResult {
   isDiscovery?: boolean;
 }
 
+// Extended result for timeline events
+export interface TimelineAlchemyResult extends AlchemyResult {
+  isDiscovery?: boolean;
+}
+
 export interface CookingState {
   isActive: boolean;
   currentOrder: Order | null;
