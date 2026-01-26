@@ -115,13 +115,44 @@ What is the result?`;
     }
 
     const data = await response.json();
-    const toolCalls = data.choices?.[0]?.message?.tool_calls;
+    console.log("AI Response:", JSON.stringify(data, null, 2));
     
-    if (!toolCalls || toolCalls.length === 0) {
-      throw new Error("No tool call response from AI");
+    const toolCalls = data.choices?.[0]?.message?.tool_calls;
+    let result;
+    
+    if (toolCalls && toolCalls.length > 0) {
+      // Parse from tool call
+      result = JSON.parse(toolCalls[0].function.arguments);
+    } else {
+      // Fallback: try to parse from text content
+      const content = data.choices?.[0]?.message?.content;
+      console.log("No tool call, trying to parse content:", content);
+      
+      if (content) {
+        // Try to extract JSON from content
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            result = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.error("Failed to parse JSON from content:", e);
+          }
+        }
+      }
+      
+      // If still no result, generate a sensible default
+      if (!result) {
+        const actionVerb = action.replace(/_/g, ' ');
+        const ingredientNames = ingredients.map((i: { name: string }) => i.name).join(' and ');
+        result = {
+          resultName: `${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}ed ${ingredientNames}`,
+          resultId: `${action}_${ingredients.map((i: { name: string }) => i.name.toLowerCase().replace(/\s+/g, '_')).join('_')}`,
+          emoji: ingredients[0]?.emoji || '🍳',
+          description: `${ingredientNames} after ${actionVerb}ing`
+        };
+        console.log("Using fallback result:", result);
+      }
     }
-
-    const result = JSON.parse(toolCalls[0].function.arguments);
 
     return new Response(JSON.stringify({
       resultName: result.resultName,
