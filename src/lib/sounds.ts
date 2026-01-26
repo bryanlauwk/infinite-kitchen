@@ -71,11 +71,28 @@ export const techniqueSounds: Record<string, string> = {
   whip: "whisk whipping cream to stiff peaks, increasingly airy sounds",
   aerate: "gentle folding motion incorporating air into mixture",
   puree: "immersion blender pureeing soup, motor changing pitch in liquid",
-  toss: "salad tongs tossing greens in large bowl, leaves rustling",
-  combine: "two mixtures coming together, spoon stirring",
+  toss: "salad tongs tossing mixed greens in large bowl, leaves rustling gently, soft arranging",
+  combine: "ingredients being gently mixed together in bowl, soft stirring sounds",
   mash: "potato masher pressing through cooked potatoes, soft squishing",
   muddle: "wooden muddler crushing mint and lime in glass",
   scramble: "spatula pushing eggs around hot pan, wet curds forming",
+  
+  // ===== COLD PREPARATION =====
+  wash: "fresh vegetables rinsing under running water, water splashing gently in sink",
+  clean: "hands rubbing vegetables clean, water droplets falling",
+  dry: "kitchen towel patting food dry, soft fabric sounds",
+  assemble: "gentle placement of ingredients on plate, soft arranging sounds",
+  arrange: "careful food arranging on plate, quiet composition",
+  hull: "strawberry stems being removed with soft pop",
+  pit: "stone fruit pit being removed, knife cutting around",
+  segment: "citrus being separated into segments, membrane tearing softly",
+  peel_fruit: "fruit skin being peeled away, juice dripping lightly",
+  scoop: "spoon scooping soft fruit flesh, gentle scraping",
+  
+  // ===== ADDITIONAL COLD PREP =====
+  slice_fruit: "knife slicing through soft fruit, juice releasing",
+  mix_salad: "salad tongs gently mixing greens and fruits in bowl",
+  layer: "ingredients being carefully layered, soft placement sounds",
   
   // ===== PREPARATION TECHNIQUES =====
   marinate: "liquid marinade pouring over meat in dish, splashing",
@@ -193,6 +210,15 @@ export const uiSounds = {
   complete: "order complete with gentle triumphant tone",
 };
 
+// Cold techniques that should NOT get heat-related ingredient modifiers
+const coldTechniques = new Set([
+  'toss', 'mix', 'combine', 'wash', 'rinse', 'peel', 'core',
+  'hull', 'pit', 'segment', 'scoop', 'assemble', 'arrange',
+  'clean', 'dry', 'garnish', 'plate', 'drizzle', 'sprinkle',
+  'slice_fruit', 'mix_salad', 'layer', 'peel_fruit', 'chill',
+  'squeeze', 'zest', 'muddle'
+]);
+
 // Get the most specific sound prompt for an action + ingredients combo
 export function getSoundPrompt(action: string, ingredients?: string[]): string {
   const normalized = action.toLowerCase().replace(/[-\s]/g, '_');
@@ -215,8 +241,9 @@ export function getSoundPrompt(action: string, ingredients?: string[]): string {
     basePrompt = getCategorySound(action);
   }
   
-  // If we have ingredients, try to add specificity
-  if (ingredients && ingredients.length > 0) {
+  // Only add ingredient modifiers for HOT techniques
+  // Skip for cold preparations to avoid "sizzling" sounds on fruit salad etc.
+  if (ingredients && ingredients.length > 0 && !coldTechniques.has(normalized)) {
     const ingredientModifier = getIngredientModifier(ingredients);
     if (ingredientModifier) {
       return `${basePrompt}, ${ingredientModifier}`;
@@ -228,24 +255,41 @@ export function getSoundPrompt(action: string, ingredients?: string[]): string {
 
 // Get sound based on tool category
 function getCategorySound(action: string): string {
-  // Map common action patterns to realistic sounds
-  if (/fry|sear|grill|saute|pan/.test(action)) {
+  const normalized = action.toLowerCase();
+  
+  // Cold/no-heat preparations FIRST (priority)
+  if (/wash|rinse|clean|dry/.test(normalized)) {
+    return "running water and gentle cleaning sounds";
+  }
+  if (/toss|mix|combine|assemble|arrange/.test(normalized)) {
+    return "gentle mixing and arranging sounds in bowl";
+  }
+  if (/peel|core|hull|pit|segment|scoop/.test(normalized)) {
+    return "soft fruit preparation, gentle cutting and separating";
+  }
+  if (/drizzle|sprinkle|garnish|plate/.test(normalized)) {
+    return "delicate finishing sounds, careful plating";
+  }
+  
+  // Hot preparations
+  if (/fry|sear|grill|saute|pan/.test(normalized)) {
     return "food sizzling in hot pan with oil bubbling";
   }
-  if (/boil|simmer|steam|poach/.test(action)) {
+  if (/boil|simmer|steam|poach/.test(normalized)) {
     return "water bubbling gently in pot";
   }
-  if (/chop|slice|dice|cut|mince/.test(action)) {
+  if (/chop|slice|dice|cut|mince/.test(normalized)) {
     return "sharp knife cutting on wooden board";
   }
-  if (/whisk|stir|mix|blend/.test(action)) {
+  if (/whisk|stir|blend/.test(normalized)) {
     return "utensil mixing ingredients in bowl";
   }
-  if (/bake|roast|oven/.test(action)) {
+  if (/bake|roast|oven/.test(normalized)) {
     return "oven with gentle heat and occasional sizzle";
   }
   
-  return "professional kitchen cooking sounds";
+  // Final fallback - generic but neutral (no sizzling)
+  return "kitchen preparation sounds, utensils and ingredients";
 }
 
 // Get modifier based on primary ingredient

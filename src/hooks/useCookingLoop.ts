@@ -196,19 +196,6 @@ export function useCookingLoop() {
         setAgentStatus('sous', 'acting');
         setAgentThinking('sous', alchemyResult.description);
 
-        // Add result to timeline
-        addTimelineEvent({
-          type: 'result',
-          agent: 'sous',
-          content: alchemyResult.description,
-          result: {
-            resultName: alchemyResult.resultName,
-            resultId: alchemyResult.resultId,
-            emoji: alchemyResult.emoji,
-            description: alchemyResult.description,
-          },
-        });
-
         // Create new ingredient from alchemy result
         const newIngredient: Ingredient = {
           id: alchemyResult.resultId,
@@ -218,9 +205,37 @@ export function useCookingLoop() {
           isGenerated: true,
         };
 
-        // Add to inventory
-        addToInventory(newIngredient);
+        // Always add to LOCAL cooking inventory (for this session only)
         currentInventory = [...currentInventory, newIngredient];
+
+        // Only add to PERSISTENT inventory if it's a discovery (new base ingredient)
+        if (alchemyResult.isDiscovery) {
+          addToInventory(newIngredient);
+          
+          addTimelineEvent({
+            type: 'result',
+            agent: 'sous',
+            content: `✨ NEW DISCOVERY: ${alchemyResult.emoji} ${alchemyResult.resultName} - ${alchemyResult.description}`,
+            result: {
+              resultName: alchemyResult.resultName,
+              resultId: alchemyResult.resultId,
+              emoji: alchemyResult.emoji,
+              description: alchemyResult.description,
+            },
+          });
+        } else {
+          addTimelineEvent({
+            type: 'result',
+            agent: 'sous',
+            content: alchemyResult.description,
+            result: {
+              resultName: alchemyResult.resultName,
+              resultId: alchemyResult.resultId,
+              emoji: alchemyResult.emoji,
+              description: alchemyResult.description,
+            },
+          });
+        }
 
         // Update conversation with function result - both React state and local array
         addConversationMessage({

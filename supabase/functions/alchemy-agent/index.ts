@@ -25,7 +25,17 @@ serve(async (req) => {
 
     const systemPrompt = `You are an alchemy agent that determines what happens when cooking actions are performed on ingredients.
 
-You must respond with a JSON object describing the result of the action.
+You must respond with a JSON object describing the result AND classify whether this result reveals a new base ingredient.
+
+A result is a DISCOVERY (isDiscovery: true) only if it:
+- Reveals a previously hidden component (egg → egg yolk, egg white)
+- Extracts a new base ingredient (clarify butter → ghee)
+- Separates into fundamental components (zest lemon → lemon zest)
+
+A result is NOT a discovery (isDiscovery: false) if it:
+- Is an intermediate cooking step (seared beef, whisked eggs)
+- Is a prepared dish (scrambled eggs, avocado toast, fruit salad)
+- Is a transformed combination (mixed vegetables, salad)
 
 Be creative but realistic. Consider:
 - What would actually happen when you ${action} these ingredients?
@@ -34,11 +44,11 @@ Be creative but realistic. Consider:
 - Give a brief poetic description
 
 Examples:
-- crack([🥚 egg]) → Raw Egg (🥚) - "Shell broken, golden yolk ready"
-- whisk([🥚 raw_egg, 🥛 milk]) → Egg Mixture (🍳) - "Fluffy and well combined"
-- pan_fry([🍳 egg_mixture]) → Scrambled Eggs (🍳) - "Golden curds, soft and creamy"
-- toast([🍞 bread]) → Toast (🍞) - "Golden brown and crispy"
-- melt([🧈 butter]) → Melted Butter (🧈) - "Liquid gold, ready to cook"`;
+- crack([🥚 egg]) → {resultName: "Raw Egg", isDiscovery: false} - opening shell
+- separate([🥚 raw egg]) → {resultName: "Egg Yolk", isDiscovery: true} - reveals component
+- clarify([🧈 butter]) → {resultName: "Ghee", isDiscovery: true} - extracts new ingredient
+- pan_fry([🍳 egg_mixture]) → {resultName: "Scrambled Eggs", isDiscovery: false} - cooking step
+- toss([🍎 fruit]) → {resultName: "Fruit Salad", isDiscovery: false} - combined dish`;
 
     const userPrompt = `Action: ${action}
 Ingredients: ${ingredientDesc}
@@ -81,9 +91,13 @@ What is the result?`;
                   description: {
                     type: "string",
                     description: "Brief poetic description of the result (under 10 words)"
+                  },
+                  isDiscovery: {
+                    type: "boolean",
+                    description: "True only if this reveals a new base ingredient component (like separating egg into yolk/white, or clarifying butter into ghee). False for cooking steps, intermediate results, and dishes."
                   }
                 },
-                required: ["resultName", "resultId", "emoji", "description"]
+                required: ["resultName", "resultId", "emoji", "description", "isDiscovery"]
               }
             }
           }
@@ -148,17 +162,24 @@ What is the result?`;
           resultName: `${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}ed ${ingredientNames}`,
           resultId: `${action}_${ingredients.map((i: { name: string }) => i.name.toLowerCase().replace(/\s+/g, '_')).join('_')}`,
           emoji: ingredients[0]?.emoji || '🍳',
-          description: `${ingredientNames} after ${actionVerb}ing`
+          description: `${ingredientNames} after ${actionVerb}ing`,
+          isDiscovery: false
         };
         console.log("Using fallback result:", result);
       }
+    }
+
+    // Ensure isDiscovery has a default value if missing
+    if (result.isDiscovery === undefined) {
+      result.isDiscovery = false;
     }
 
     return new Response(JSON.stringify({
       resultName: result.resultName,
       resultId: result.resultId,
       emoji: result.emoji,
-      description: result.description
+      description: result.description,
+      isDiscovery: result.isDiscovery
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
