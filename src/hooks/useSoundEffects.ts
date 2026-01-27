@@ -11,20 +11,66 @@ const soundCache = new Map<string, Blob>();
 const recentlyPlayed = new Set<string>();
 const RECENT_LIMIT = 5;
 
+// Sound queue to prevent overlap
+interface QueueItem {
+  blob: Blob;
+  volume: number;
+  resolve: () => void;
+}
+
 export function useSoundEffects() {
   const [isEnabled, setIsEnabled] = useState(true);
   const [volume, setVolume] = useState(0.5);
   const ambienceRef = useRef<HTMLAudioElement | null>(null);
   const ambienceLoaded = useRef(false);
   const currentActionAudio = useRef<HTMLAudioElement | null>(null);
+  const isPlaying = useRef(false);
+  const soundQueue = useRef<QueueItem[]>([]);
 
-  // Fetch sound from ElevenLabs via edge function
+  // Process sound queue
+  const processQueue = useCallback(async () => {
+    if (isPlaying.current || soundQueue.current.length === 0) return;
+    
+    isPlaying.current = true;
+    const item = soundQueue.current.shift()!;
+    
+    try {
+      const audioUrl = URL.createObjectURL(item.blob);
+      const audio = new Audio(audioUrl);
+      audio.volume = item.volume;
+      
+      await new Promise<void>((resolve) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+        audio.play().catch(() => resolve());
+      });
+      
+      // Small gap between sounds
+      await new Promise(r => setTimeout(r, 200));
+    } finally {
+      isPlaying.current = false;
+      item.resolve();
+      processQueue();
+    }
+  }, []);
+
+  // Fetch sound from ElevenLabs via edge function with timeout
   const fetchSound = useCallback(async (prompt: string, duration: number = 3): Promise<Blob | null> => {
     // Check cache first
     const cacheKey = `${prompt}-${duration}`;
     if (soundCache.has(cacheKey)) {
       return soundCache.get(cacheKey)!;
     }
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     try {
       const response = await fetch(
@@ -37,8 +83,11 @@ export function useSoundEffects() {
             'Authorization': `Bearer ${SUPABASE_KEY}`,
           },
           body: JSON.stringify({ prompt, duration }),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -65,7 +114,12 @@ export function useSoundEffects() {
       soundCache.set(cacheKey, blob);
       return blob;
     } catch (error) {
-      console.warn('SFX fetch error:', error);
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('SFX fetch timed out');
+      } else {
+        console.warn('SFX fetch error:', error);
+      }
       return null;
     }
   }, []);
@@ -73,16 +127,29 @@ export function useSoundEffects() {
   // Play a sound blob
   const playBlob = useCallback(async (
     blob: Blob, 
-    options: { loop?: boolean; volume?: number } = {}
+    options: { loop?: boolean; volume?: number; queue?: boolean } = {}
   ): Promise<HTMLAudioElement | null> => {
     if (!isEnabled) return null;
 
-    const { loop = false, volume: customVolume } = options;
+    const { loop = false, volume: customVolume, queue = false } = options;
+    const effectiveVolume = customVolume ?? volume;
+
+    // If queuing is requested and not looping, add to queue
+    if (queue && !loop) {
+      return new Promise((resolve) => {
+        soundQueue.current.push({ 
+          blob, 
+          volume: effectiveVolume,
+          resolve: () => resolve(null)
+        });
+        processQueue();
+      });
+    }
 
     try {
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
-      audio.volume = customVolume ?? volume;
+      audio.volume = effectiveVolume;
       audio.loop = loop;
       
       audio.onended = () => {
@@ -97,7 +164,7 @@ export function useSoundEffects() {
       console.warn('Audio playback error:', error);
       return null;
     }
-  }, [isEnabled, volume]);
+  }, [isEnabled, volume, processQueue]);
 
   // Start background ambience (loops)
   const startAmbience = useCallback(async (variant: 'kitchen' | 'morning' | 'rush' | 'quiet' = 'kitchen') => {
@@ -199,7 +266,7 @@ export function useSoundEffects() {
     if (!isEnabled) return;
     const blob = await fetchSound(uiSounds.orderReceived, 2);
     if (blob) {
-      await playBlob(blob, { volume: volume * 0.6 });
+      await playBlob(blob, { volume: volume * 0.6, queue: true });
     }
   }, [isEnabled, volume, fetchSound, playBlob]);
 
@@ -250,6 +317,8 @@ export function useSoundEffects() {
         if (currentActionAudio.current) {
           currentActionAudio.current.pause();
         }
+        // Clear queue
+        soundQueue.current = [];
       }
       return !prev;
     });

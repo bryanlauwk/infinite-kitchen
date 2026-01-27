@@ -5,7 +5,6 @@ import {
   TimelineEvent, 
   CookingState, 
   ConversationMessage,
-  AlchemyResult,
   CustomerReview
 } from '@/lib/types';
 import { ingredients as baseIngredients } from '@/data/ingredients';
@@ -24,6 +23,7 @@ interface KitchenContextType {
   updateOrderStatus: (orderId: string, status: Order['status'], servedDish?: string) => void;
   setJudgeResult: (orderId: string, result: Order['judgeResult']) => void;
   setOrderReview: (orderId: string, review: CustomerReview) => void;
+  recookOrder: (orderId: string) => void;
   
   // Timeline
   timeline: TimelineEvent[];
@@ -126,6 +126,30 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     ));
   }, []);
 
+  const recookOrder = useCallback((orderId: string) => {
+    setOrders(prev => prev.map(order => 
+      order.id === orderId 
+        ? { 
+            ...order, 
+            status: 'not_started' as const,
+            recookCount: (order.recookCount || 0) + 1,
+            previousAttempts: [
+              ...(order.previousAttempts || []),
+              {
+                servedDish: order.servedDish || '',
+                reasoning: order.judgeResult?.reasoning || '',
+                timestamp: Date.now()
+              }
+            ],
+            // Clear previous attempt data
+            judgeResult: undefined,
+            servedDish: undefined,
+            review: undefined,
+          }
+        : order
+    ));
+  }, []);
+
   // Timeline functions
   const addTimelineEvent = useCallback((event: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
     const newEvent: TimelineEvent = {
@@ -170,6 +194,7 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     updateOrderStatus,
     setJudgeResult,
     setOrderReview,
+    recookOrder,
     timeline,
     addTimelineEvent,
     clearTimeline,

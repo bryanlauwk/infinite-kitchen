@@ -91,6 +91,11 @@ export default {
           DEFAULT: "hsl(var(--hero))",
           foreground: "hsl(var(--hero-foreground))",
         },
+        // Summon button
+        summon: {
+          DEFAULT: "hsl(var(--summon))",
+          foreground: "hsl(var(--summon-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
