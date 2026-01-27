@@ -17,29 +17,29 @@ const formatLogEntry = (event: TimelineEvent): string => {
     case 'action':
       if (event.functionCall) {
         const ingredients = event.functionCall.ingredients.join(', ');
-        return `${event.functionCall.name}: ${ingredients}`;
+        return `${event.functionCall.name}(${ingredients})`;
       }
       return event.content;
     case 'result':
       if (event.result) {
-        return `${event.result.emoji} ${event.result.resultName}`;
+        return `→ ${event.result.emoji} ${event.result.resultName}`;
       }
       return event.content;
     case 'serve':
-      return `Dish served.`;
+      return `◉ Dish served.`;
     case 'judge':
       return event.content.replace(/✅|❌/g, '').trim();
     case 'error':
-      return event.content;
+      return `✗ ${event.content}`;
     default:
       return event.content;
   }
 };
 
-// Discovery indicator - subtle pulse dot (no gamified "NEW" badge per PRD)
+// Discovery indicator - subtle pulse dot
 const DiscoveryIndicator: React.FC = () => (
   <span className="inline-flex items-center ml-2">
-    <span className="w-1.5 h-1.5 rounded-full bg-gemini animate-pulse" />
+    <span className="w-1.5 h-1.5 rounded-full terminal-text-discovery animate-pulse" style={{ backgroundColor: 'currentColor' }} />
   </span>
 );
 
@@ -59,47 +59,56 @@ export const KitchenLog: React.FC = () => {
   
   return (
     <section className="px-6 py-4">
-      <div className="border border-border rounded-lg p-4 bg-card">
-        <div className="mb-3">
-          <h2 className="font-bold uppercase text-sm tracking-wide">Kitchen Log</h2>
-          <p className="text-xs text-muted-foreground">
-            What just happened.
-          </p>
+      <div className="rounded-2xl overflow-hidden border border-border card-elevated">
+        {/* Header bar */}
+        <div className="flex justify-between items-center px-4 py-2.5 bg-muted border-b border-border">
+          <h2 className="font-bold uppercase text-xs tracking-wide">Kitchen Log</h2>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            count: {timeline.length.toString().padStart(4, '0')}
+          </span>
         </div>
         
-        <div ref={scrollRef}>
-          <ScrollArea className="h-32">
+        {/* Terminal body */}
+        <div ref={scrollRef} className="terminal-bg">
+          <ScrollArea className="h-36">
+            <div className="p-4 font-mono text-sm">
             {timeline.length === 0 ? (
-              <div className="flex items-center justify-center h-24 text-sm text-muted-foreground italic">
-                Waiting for orders.
+              <div className="terminal-text-muted italic">
+                &gt; Waiting for orders...
               </div>
             ) : (
-              <div className="space-y-1 pr-4">
-                {timeline.map(event => {
-                  const isDiscovery = isDiscoveryEvent(event);
-                  return (
+                <div className="space-y-1">
+                  {timeline.map(event => {
+                    const isDiscovery = isDiscoveryEvent(event);
+                    return (
                     <p 
                       key={event.id} 
-                      className={`text-sm leading-relaxed animate-slide-in ${
+                      className={`leading-relaxed animate-slide-in ${
                         isDiscovery 
-                          ? 'text-gemini font-medium' 
-                          : 'text-foreground'
+                          ? 'terminal-text-discovery' 
+                          : event.type === 'error'
+                            ? 'terminal-text-error'
+                            : ''
                       }`}
                     >
+                      <span className="terminal-text-muted mr-2">&gt;</span>
                       {formatLogEntry(event)}
                       {isDiscovery && <DiscoveryIndicator />}
                     </p>
-                  );
-                })}
-                
-                {/* Activity indicator when cooking */}
-                {cookingState.isActive && (
-                  <p className="text-sm text-muted-foreground italic">
-                    ...
-                  </p>
-                )}
-              </div>
-            )}
+                    );
+                  })}
+                  
+                  {cookingState.isActive && (
+                    <p className="terminal-text-muted">
+                      <span className="mr-2">&gt;</span>
+                      <span className="typing-dot">.</span>
+                      <span className="typing-dot">.</span>
+                      <span className="typing-dot">.</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </ScrollArea>
         </div>
       </div>

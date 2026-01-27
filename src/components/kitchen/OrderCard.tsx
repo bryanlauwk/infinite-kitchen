@@ -2,6 +2,7 @@ import React from 'react';
 import { Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DishIllustration } from './DishIllustration';
 
 interface OrderCardProps {
   order: Order;
@@ -13,18 +14,33 @@ const difficultyConfig = {
   easy: {
     label: 'EASY',
     className: 'bg-easy text-easy-foreground',
-    cardClass: 'order-card-easy',
   },
   intermediate: {
     label: 'MED',
     className: 'bg-intermediate text-intermediate-foreground',
-    cardClass: 'order-card-intermediate',
   },
   hard: {
     label: 'HARD',
     className: 'bg-hard text-hard-foreground',
-    cardClass: 'order-card-hard',
   },
+};
+
+const getStatusText = (status: Order['status']): string => {
+  switch (status) {
+    case 'not_started':
+      return 'Not started';
+    case 'active':
+    case 'cooking':
+      return 'Cooking...';
+    case 'served':
+      return 'Served';
+    case 'verified':
+      return 'Verified';
+    case 'rejected':
+      return 'Rejected';
+    default:
+      return 'Not started';
+  }
 };
 
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled }) => {
@@ -34,14 +50,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
   return (
     <div 
       className={cn(
-        "relative flex flex-col rounded-xl border border-border p-3 transition-all",
-        config.cardClass,
+        "relative flex flex-col rounded-2xl border border-border bg-card p-3 order-card",
         isActive && "ring-2 ring-processing/50"
       )}
     >
       {/* Difficulty Badge */}
       <div className={cn(
-        "absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded",
+        "absolute top-2 left-2 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full",
         config.className
       )}>
         {config.label}
@@ -49,30 +64,39 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
       
       {/* Attempt indicator */}
       {order.recookCount && order.recookCount > 0 && (
-        <div className="absolute top-2 right-2 text-[10px] text-muted-foreground">
+        <div className="absolute top-2 right-2 z-10 text-[10px] text-muted-foreground bg-background/80 px-1.5 py-0.5 rounded">
           #{order.recookCount + 1}
         </div>
       )}
       
-      {/* Emoji Display */}
-      <div className="flex items-center justify-center py-4 mt-2">
-        <span className="text-4xl">{order.emoji}</span>
+      {/* Illustration Area */}
+      <div className="mt-5 mb-3">
+        <DishIllustration 
+          dishName={order.dishName} 
+          emoji={order.emoji}
+        />
       </div>
       
       {/* Dish Name */}
-      <h3 className="font-bold text-sm leading-tight mb-3 text-center line-clamp-2">
+      <h3 className="font-bold text-sm leading-tight text-center line-clamp-2 mb-1">
         {order.dishName}
       </h3>
       
-      {/* Status / Action */}
+      {/* Status Text */}
+      <p className={cn(
+        "text-[10px] text-center mb-3",
+        isActive ? "text-processing font-medium" : "text-muted-foreground"
+      )}>
+        {getStatusText(order.status)}
+      </p>
+      
+      {/* Action Button */}
       <div className="mt-auto">
         {isActive ? (
-          <div className="text-xs text-center py-2 text-processing font-medium">
-            Cooking...
-          </div>
+          <div className="h-8" /> 
         ) : (
           <Button
-            className="w-full btn-summon text-xs h-8"
+            className="w-full btn-summon text-xs h-9"
             onClick={() => onStart(order.id)}
             disabled={isDisabled}
           >

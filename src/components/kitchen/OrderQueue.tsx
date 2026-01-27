@@ -2,6 +2,8 @@ import React from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { OrderCard } from './OrderCard';
 import { AddOrderInput } from './AddOrderInput';
+import { Button } from '@/components/ui/button';
+import { Volume2 } from 'lucide-react';
 
 interface OrderQueueProps {
   onStartOrder: (orderId: string) => void;
@@ -17,12 +19,19 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
   );
   
   return (
-    <div className="border border-border rounded-lg p-4 bg-card">
-      <div className="mb-4">
-        <h2 className="font-bold uppercase text-sm tracking-wide">The Orders of the Universe</h2>
-        <p className="text-xs text-muted-foreground">
-          Dishes awaiting their destiny.
-        </p>
+    <div className="border border-border rounded-2xl p-4 bg-card card-elevated">
+      {/* Header with Audio Log button */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h2 className="font-bold uppercase text-sm tracking-wide">The Orders of the Universe</h2>
+          <p className="text-xs text-muted-foreground">
+            Try Factilee Fanefilie θgent.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-2 text-xs rounded-xl">
+          <Volume2 className="h-3.5 w-3.5" />
+          Audio Log
+        </Button>
       </div>
       
       <div className="mb-4">
@@ -40,7 +49,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
         ))}
         
         {pendingOrders.length === 0 && (
-          <div className="col-span-full text-center py-8 text-muted-foreground text-sm">
+          <div className="col-span-full text-center py-8 text-muted-foreground text-sm italic">
             No orders yet. Add one above.
           </div>
         )}
