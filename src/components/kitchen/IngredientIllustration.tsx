@@ -22,9 +22,9 @@ export const IngredientIllustration: React.FC<IngredientIllustrationProps> = ({
   useEffect(() => {
     if (!hasRequested && !illustrationState.url && !illustrationState.isLoading) {
       setHasRequested(true);
-      requestIllustration(ingredientName, 'ingredient' as any);
+      requestIllustration(normalizedName, 'ingredient', ingredientName);
     }
-  }, [ingredientName, hasRequested, illustrationState, requestIllustration]);
+  }, [ingredientName, normalizedName, hasRequested, illustrationState, requestIllustration]);
 
   return (
     <div 
@@ -35,7 +35,7 @@ export const IngredientIllustration: React.FC<IngredientIllustrationProps> = ({
       )}
     >
       {illustrationState.isLoading && (
-        <div className="w-full h-full shimmer bg-gradient-to-br from-muted to-muted/50" />
+        <div className="w-full h-full animate-pulse bg-muted" />
       )}
       
       {illustrationState.url && !illustrationState.isLoading && (
@@ -43,6 +43,7 @@ export const IngredientIllustration: React.FC<IngredientIllustrationProps> = ({
           src={illustrationState.url}
           alt={ingredientName}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       )}
       

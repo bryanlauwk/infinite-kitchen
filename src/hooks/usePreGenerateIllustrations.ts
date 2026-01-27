@@ -15,10 +15,10 @@ const priorityIngredients = [
   'cheese', 'butter', 'rice', 'pasta', 'bread', 'salt'
 ];
 
-// Priority techniques to pre-generate (most common ones)
+// Priority technique IDs to pre-generate (most common ones - use IDs not display names)
 const priorityTechniques = [
   'fry', 'boil', 'chop', 'slice', 'stir', 'season', 
-  'bake', 'grill', 'mix', 'serve'
+  'bake', 'grill', 'saute', 'flambe', 'puree', 'blend'
 ];
 
 export const usePreGenerateIllustrations = () => {
@@ -70,11 +70,11 @@ export const usePreGenerateIllustrations = () => {
         }
       }
 
-      // 4. Pre-generate priority techniques
-      for (const technique of priorityTechniques.slice(0, 6)) {
-        const state = getIllustration(`technique_${technique}`);
+      // 4. Pre-generate priority techniques (use IDs for consistent keys)
+      for (const techniqueId of priorityTechniques.slice(0, 6)) {
+        const state = getIllustration(`technique_${techniqueId}`);
         if (!state.url && !state.isLoading) {
-          requestIllustration(technique, 'technique' as any);
+          requestIllustration(techniqueId, 'technique');
           await new Promise(resolve => setTimeout(resolve, 800));
         }
       }

@@ -11,7 +11,7 @@ type IllustrationType = 'dish' | 'chef' | 'ingredient' | 'technique';
 
 interface IllustrationContextType {
   getIllustration: (key: string) => IllustrationState;
-  requestIllustration: (name: string, type: IllustrationType) => Promise<string | null>;
+  requestIllustration: (name: string, type: IllustrationType, displayName?: string) => Promise<string | null>;
 }
 
 const IllustrationContext = createContext<IllustrationContextType | undefined>(undefined);
@@ -69,7 +69,8 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
 
   const requestIllustration = useCallback(async (
     name: string,
-    type: IllustrationType
+    type: IllustrationType,
+    displayName?: string
   ): Promise<string | null> => {
     const promptKey = generatePromptKey(name, type);
 
@@ -112,7 +113,7 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
           }
 
           // Generate new illustration - use type-specific prompt if available
-          let actualPrompt = name;
+          let actualPrompt = displayName || name;
           if (type === 'chef' && chefPrompts[name]) {
             actualPrompt = chefPrompts[name];
           }

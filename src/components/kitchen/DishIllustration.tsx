@@ -45,6 +45,7 @@ export const DishIllustration: React.FC<DishIllustrationProps> = ({
           src={illustrationState.url}
           alt={dishName}
           className="w-full h-full object-cover"
+          loading="lazy"
           onError={(e) => {
             e.currentTarget.style.display = 'none';
           }}
