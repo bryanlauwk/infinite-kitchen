@@ -5,7 +5,8 @@ import {
   TimelineEvent, 
   CookingState, 
   ConversationMessage,
-  AlchemyResult 
+  AlchemyResult,
+  CustomerReview
 } from '@/lib/types';
 import { ingredients as baseIngredients } from '@/data/ingredients';
 import { orderTemplates, createOrder } from '@/data/orders';
@@ -22,6 +23,7 @@ interface KitchenContextType {
   startOrder: (orderId: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status'], servedDish?: string) => void;
   setJudgeResult: (orderId: string, result: Order['judgeResult']) => void;
+  setOrderReview: (orderId: string, review: CustomerReview) => void;
   
   // Timeline
   timeline: TimelineEvent[];
@@ -116,6 +118,14 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     ));
   }, []);
 
+  const setOrderReview = useCallback((orderId: string, review: CustomerReview) => {
+    setOrders(prev => prev.map(order => 
+      order.id === orderId 
+        ? { ...order, review }
+        : order
+    ));
+  }, []);
+
   // Timeline functions
   const addTimelineEvent = useCallback((event: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
     const newEvent: TimelineEvent = {
@@ -159,6 +169,7 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     startOrder,
     updateOrderStatus,
     setJudgeResult,
+    setOrderReview,
     timeline,
     addTimelineEvent,
     clearTimeline,

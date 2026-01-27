@@ -37,7 +37,7 @@ export const AddOrderInput: React.FC = () => {
 
     addOrder(trimmed);
     setDishName('');
-    toast.success(`Added order: ${trimmed}`);
+    toast(`Order added.`);
   };
 
   return (
@@ -48,7 +48,7 @@ export const AddOrderInput: React.FC = () => {
           value={dishName}
           onChange={(e) => setDishName(e.target.value)}
           onFocus={handleFocus}
-          placeholder={`Try "${placeholderExamples[placeholderIndex]}"...`}
+          placeholder={`Try "${placeholderExamples[placeholderIndex]}"… or don't.`}
           className="pl-9 font-mono text-sm bg-background"
         />
       </div>

@@ -4,6 +4,7 @@ import { useAgents } from '@/context/AgentContext';
 import { callCookingAgent, callAlchemyAgent, callJudgeAgent } from '@/lib/api';
 import { ConversationMessage, Ingredient } from '@/lib/types';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { generateReview } from '@/lib/reviewGenerator';
 import { toast } from 'sonner';
 
 const MAX_ITERATIONS = 20; // Safety limit
@@ -19,6 +20,7 @@ export function useCookingLoop() {
     addTimelineEvent,
     updateOrderStatus,
     setJudgeResult,
+    setOrderReview,
     addConversationMessage,
     clearConversation,
   } = useKitchen();
@@ -290,14 +292,21 @@ export function useCookingLoop() {
         // Play success or error sound based on judge result
         if (judgeResult.match) {
           await playSuccessSound();
+          
+          // Generate customer review after a delay (for successful dishes only)
+          setTimeout(() => {
+            const review = generateReview();
+            setOrderReview(orderId, review);
+          }, 2000 + Math.random() * 3000); // 2-5 second delay
         } else {
           await playErrorSound();
         }
 
-        toast[judgeResult.match ? 'success' : 'error'](
+        // Calm, observational feedback (no "success/failure" language)
+        toast(
           judgeResult.match 
-            ? `Order fulfilled! ${judgeResult.reasoning}`
-            : `Order rejected: ${judgeResult.reasoning}`
+            ? 'The kitchen approves.'
+            : 'Something feels off.'
         );
       }
 
@@ -334,6 +343,7 @@ export function useCookingLoop() {
     addTimelineEvent,
     updateOrderStatus,
     setJudgeResult,
+    setOrderReview,
     addConversationMessage,
     clearConversation,
     setAgentStatus,
