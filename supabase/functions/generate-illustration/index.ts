@@ -112,43 +112,62 @@ CRITICAL STYLE REQUIREMENTS:
 - NO text, NO labels`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"]
-      }),
-    });
+    // Retry logic for image generation
+    const MAX_RETRIES = 2;
+    let imageDataUrl: string | null = null;
+    let lastError: string = "";
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later" }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        console.log(`Retry attempt ${attempt} for: ${dishName}`);
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required" }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-image",
+          messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: You MUST generate and return an image. Do not respond with text only." }],
+          modalities: ["image", "text"]
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later" }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "Payment required" }), {
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        lastError = `AI gateway error: ${response.status}`;
+        continue; // Retry on server errors
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+
+      const data = await response.json();
+      imageDataUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+      if (imageDataUrl) {
+        break; // Success, exit retry loop
+      }
+
+      console.log(`No image in response (attempt ${attempt + 1}):`, data.choices?.[0]?.message?.content?.slice(0, 100));
+      lastError = "No image generated";
     }
 
-    const data = await response.json();
-    const imageDataUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
     if (!imageDataUrl) {
-      console.error("No image in response:", JSON.stringify(data));
-      throw new Error("No image generated");
+      console.error(`Failed to generate image after ${MAX_RETRIES + 1} attempts for: ${dishName}`);
+      throw new Error(lastError || "No image generated");
     }
 
     // Extract base64 data from data URL
