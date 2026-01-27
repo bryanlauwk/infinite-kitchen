@@ -1,420 +1,350 @@
 
-# Infinite Kitchen UI Transformation Plan
+
+# Tactile Whimsy Illustration Style Transformation
 
 ## Overview
 
-This plan addresses four major changes:
-1. **UI Transformation** - Match the reference image's playful, neal.fun-like aesthetic
-2. **Sound Effect System** - Fix ElevenLabs integration and allow API key re-entry
-3. **Agent Function Calling** - Improve reliability to prevent cooking flow failures
-4. **Recook Feature** - Add ability to retry rejected dishes
+Transform the Infinite Kitchen UI to match the reference image's playful "Digital Playbook" aesthetic with vector-stylized surreal food illustrations, soft gradients, and a developer-tool parody aesthetic.
 
 ---
 
-## Part 1: UI Transformation (Reference Image Match)
+## Part 1: Visual Design System Updates
 
-The reference image shows a distinct visual style:
-- **Warm cream/off-white background** instead of pure white
-- **Rounded pastel card backgrounds** for orders (with dish illustrations)
-- **Difficulty badges** (EASY) in colored corner labels
-- **"Summon" buttons** instead of "Cook"
-- **Three-column layout**: Ingredients (left), Orders (center), Techniques (right)
-- **"The Chefs of Reality"** section with agent avatars
-- **Audio toggle** button in header
-- **Hero banner** with whimsical welcome message
+### 1.1 Typography Enhancement
 
-### 1.1 Layout Restructure
+Add a rounded sans-serif font for headers alongside the monospace for that "game-y" feel:
 
-Reorganize from vertical stacking to the three-panel + agents layout:
-
-```text
-+------------------------------------------------------------------+
-|  INFINITE KITCHEN                                    [Audio]      |
-|  A culinary sandbox powered by impossible & endless possibilities.|
-+------------------------------------------------------------------+
-|  [=================== HERO BANNER ====================]          |
-|  Welcome, flavor czars! Your function: beyond of dream. meal     |
-+------------------------------------------------------------------+
-|  INGREDIENTS  |  THE ORDERS OF THE UNIVERSE         |  TECHNIQUES |
-|  ☐ Flour      |  [Card] [Card] [Card] [Card]        |  🍳 fry()   |
-|  ☐ Egg        |  [Card] [Card] [Card] [Card]        |  🔪 chop()  |
-|  ...          |                                      |  ...        |
-+--------------+--------------------------------------+--------------+
-|              THE CHEFS OF REALITY                                 |
-|  [Alchemist]      [Skies Conf]       [Noodle Weaver]             |
-+------------------------------------------------------------------+
-|  KITCHEN LOG                                       count: ????    |
-|  > log entries...                                                 |
-+------------------------------------------------------------------+
-```
-
-### 1.2 Color Palette Updates (index.css)
+**index.css changes:**
+- Import Inter or Nunito for rounded headers
+- Keep Space Mono for logs, code, and function names
+- Headers get thick, rounded sans-serif
+- Body/logs stay monospace
 
 ```css
-:root {
-  /* Warm cream background */
-  --background: 45 30% 96%;
-  
-  /* Softer off-white cards */
-  --card: 45 40% 99%;
-  
-  /* Hero banner - warm yellow */
-  --hero: 45 80% 92%;
-  
-  /* Difficulty badges */
-  --easy: 142 71% 45%;
-  --intermediate: 45 93% 47%;
-  --hard: 0 84% 60%;
-  
-  /* Summon button - coral/salmon */
-  --summon: 16 85% 60%;
+/* Typography mix */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap');
+
+h1, h2, h3 { font-family: 'Nunito', sans-serif; font-weight: 800; }
+code, .font-mono, .kitchen-log { font-family: 'Space Mono', monospace; }
+```
+
+### 1.2 Enhanced Card Shadows
+
+Add soft, warm shadows to all cards for that "physical objects on flat surface" look:
+
+```css
+.card-elevated {
+  box-shadow: 
+    0 2px 8px -2px rgba(0, 0, 0, 0.08),
+    0 4px 16px -4px rgba(0, 0, 0, 0.12);
 }
 ```
 
-### 1.3 Order Cards with Visual Style
+### 1.3 Ingredient Checkbox Style
 
-Update `OrderCard.tsx` to match reference:
-- Rounded corners with subtle shadow
-- Difficulty badge in top-left corner
-- Larger dish emoji display area with background
-- "Summon" button with coral/salmon color
-- Status text ("Not started")
+Transform ingredient list to use playful checkbox toggles like the reference:
 
-### 1.4 Header with Audio Toggle
-
-Add audio toggle button to header that controls the sound system:
-
-```tsx
-// Header.tsx
-<header className="flex justify-between items-start px-6 py-4">
-  <div>
-    <h1 className="text-2xl font-bold">INFINITE KITCHEN</h1>
-    <p>A culinary sandbox powered by impossible & endless possibilities.</p>
-  </div>
-  <Button variant="outline" onClick={toggleSounds}>
-    {isEnabled ? <Volume2 /> : <VolumeX />}
-    Audio
-  </Button>
-</header>
-```
-
-### 1.5 Three-Column Layout
-
-Update `Index.tsx` to use CSS grid for the three-panel layout:
-- Left column: Ingredients (checkbox list style)
-- Center column: Orders grid (2x4 cards)
-- Right column: Techniques (function-style list)
-
-### 1.6 Hero Banner Update
-
-More whimsical, procedural message:
-
-```tsx
-<section className="bg-hero rounded-xl mx-6 my-4 px-6 py-4 text-center">
-  <p className="text-lg">
-    Welcome, flavor czars! Your function: beyond of dream. 🧑‍🍳 meal 👨‍🍳
-  </p>
-</section>
-```
-
-### 1.7 Agent Section ("The Chefs of Reality")
-
-Redesign the Kitchen Staff section:
-- Horizontal card layout with avatar images (emoji-based)
-- Quirky descriptions
-- "Observe" / "Open" / "Upgrade" buttons
+- Custom styled checkboxes with rounded squares
+- Ingredient icons have a subtle grainy gradient effect
+- Hover states with gentle scale/glow
 
 ---
 
-## Part 2: Sound Effect System Fix
+## Part 2: Order Cards - "Tactile Whimsy" Style
 
-### 2.1 Allow ElevenLabs API Key Re-entry
+### 2.1 SVG Dish Illustrations Component
 
-Add a settings mechanism to update the API key:
+Create a `DishIllustration` component that generates stylized food illustrations:
+
+**New file: `src/components/kitchen/DishIllustration.tsx`**
+
+Each dish gets a unique SVG illustration with:
+- Soft gradient backgrounds (pastel colors based on dish type)
+- Stylized vector food shapes
+- Grainy texture overlay for that "juicy" 3D effect
+- Surreal cosmic elements for special dishes
 
 ```tsx
-// Create AudioSettings component with key management
-const AudioSettings = () => {
-  const [showKeyInput, setShowKeyInput] = useState(false);
+// Example: generates appropriate illustration based on dish name/emoji
+const DishIllustration = ({ dishName, emoji }: Props) => {
+  const bgGradient = getDishGradient(dishName);
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline">
-          <Volume2 /> Audio
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem onClick={toggleSounds}>
-          {isEnabled ? 'Mute' : 'Unmute'}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setShowKeyInput(true)}>
-          Update API Key
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="dish-illustration" style={{ background: bgGradient }}>
+      {/* SVG food illustration based on dish type */}
+      <FoodSvg type={inferFoodType(dishName)} />
+      {/* Optional cosmic overlay for special dishes */}
+    </div>
   );
 };
 ```
 
-Use the `add_secret` tool to prompt for ELEVENLABS_API_KEY update.
+### 2.2 Order Card Visual Redesign
 
-### 2.2 Improve Sound System Reliability
+**Update `OrderCard.tsx`:**
 
-**Edge Function (`elevenlabs-sfx/index.ts`):**
-- Already has validation for audio size
-- Add retry logic with exponential backoff
-- Add more specific error messages
+- Replace emoji-only display with full illustration card
+- Illustration area: 120x80px with rounded corners
+- Grainy gradient background matching dish category
+- Difficulty badge stays in top-left corner
+- "Not started" status text below dish name
+- Coral "Summon" button with rounded corners
 
-**Client Hook (`useSoundEffects.ts`):**
-- Add timeout handling (10 second max wait)
-- Add queue system to prevent sound overlap
-- Better error logging for debugging
+```text
++---------------------------+
+| [EASY]                    |
+|  +---------------------+  |
+|  |   🍝               |  |  <- Illustration area with gradient bg
+|  |  [pasta shapes]     |  |
+|  +---------------------+  |
+|    Cosmic Carbonara       |
+|    Not started            |
+|  [====== Summon ======]   |
++---------------------------+
+```
+
+### 2.3 Dish Category Color Mapping
+
+Create a color palette for different dish types:
+
+```typescript
+const dishGradients = {
+  pasta: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', // warm yellow
+  salad: 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)', // fresh green
+  meat: 'linear-gradient(135deg, #FECACA 0%, #FCA5A5 100%)',  // warm red
+  seafood: 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)', // ocean blue
+  dessert: 'linear-gradient(135deg, #FCE7F3 0%, #FBCFE8 100%)', // pink
+  cosmic: 'linear-gradient(135deg, #C4B5FD 0%, #A78BFA 100%)', // purple
+};
+```
 
 ---
 
-## Part 3: Agent Function Calling Improvements
+## Part 3: Techniques Panel - Toggle/Slider Style
 
-The cooking flow can fail when:
-1. **Cooking Agent** returns no function call (just text)
-2. **Alchemy Agent** fails to parse tool call response
-3. **Judge Agent** has no fallback for missing tool calls
+### 3.1 Technique Toggle Component
 
-### 3.1 Cooking Agent Improvements
+**New file: `src/components/kitchen/TechniqueToggle.tsx`**
 
-Update `supabase/functions/cooking-agent/index.ts`:
+Transform techniques list into a settings-panel style with toggles:
 
-```typescript
-// Force function calling with tool_choice
-body: JSON.stringify({
-  model: "google/gemini-3-flash-preview",
-  messages,
-  tools,
-  tool_choice: "required",  // Force a tool call every time
-  temperature: 0.7,
-}),
-
-// Better handling when no tool call returned
-if (!toolCalls || toolCalls.length === 0) {
-  // Extract action from text content as fallback
-  const content = message.content || "";
-  const actionMatch = content.match(/(\w+)\s*\(\s*\[(.*?)\]\s*\)/);
-  
-  if (actionMatch) {
-    return {
-      thinking: content,
-      functionCall: {
-        name: actionMatch[1],
-        ingredients: actionMatch[2].split(',').map(s => s.trim().replace(/['"]/g, ''))
-      },
-      isComplete: actionMatch[1] === 'serve'
-    };
-  }
-  
-  // Last resort: auto-serve with available ingredients
-  return {
-    thinking: content + "\n\n[Auto-completing due to missing function call]",
-    functionCall: {
-      name: 'serve',
-      ingredients: [inventory[inventory.length - 1]?.id || 'dish']
-    },
-    isComplete: true
-  };
-}
-```
-
-### 3.2 Alchemy Agent Improvements
-
-The alchemy agent already has good fallback logic. Strengthen it:
-
-```typescript
-// Existing fallback is good, but add clearer logging
-if (!result) {
-  console.log("Generating fallback result for:", action, ingredients);
-  result = {
-    resultName: `${action.charAt(0).toUpperCase() + action.slice(1)}ed ${ingredientNames}`,
-    resultId: `${action}_result_${Date.now()}`,
-    emoji: ingredients[0]?.emoji || '🍳',
-    description: `The result of ${action}`,
-    isDiscovery: false
-  };
-}
-```
-
-### 3.3 Judge Agent Improvements
-
-Add fallback logic similar to alchemy agent:
-
-```typescript
-if (!toolCalls || toolCalls.length === 0) {
-  // Try to parse from text content
-  const content = data.choices?.[0]?.message?.content || "";
-  const matchLower = content.toLowerCase();
-  
-  const match = matchLower.includes('yes') || 
-                matchLower.includes('match') || 
-                matchLower.includes('fulfill');
-  
-  return new Response(JSON.stringify({
-    match: match,
-    confidence: 70,
-    reasoning: content.slice(0, 100) || "Evaluated based on dish similarity"
-  }), { ... });
-}
-```
-
-### 3.4 Cooking Loop Error Recovery
-
-Update `useCookingLoop.ts` to handle failures more gracefully:
-
-```typescript
-// Add retry logic for agent calls
-const callWithRetry = async (fn: () => Promise<any>, maxRetries = 2) => {
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (i === maxRetries) throw error;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    }
-  }
-};
-
-// Use in loop
-const cookingResponse = await callWithRetry(() => 
-  callCookingAgent(currentInventory, order, conversationHistory)
+```tsx
+const TechniqueToggle = ({ tool, isActive }: Props) => (
+  <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
+    <div className="flex items-center gap-2">
+      <span className="text-lg">{tool.emoji}</span>
+      <code className="text-xs text-muted-foreground">{tool.id}()</code>
+    </div>
+    <Switch checked={isActive} className="scale-75" />
+  </div>
 );
 ```
 
-Also add: if no function call after 3 consecutive iterations, auto-serve with the last created ingredient.
+### 3.2 Update TechniquesPanel
+
+**Modify `TechniquesPanel.tsx`:**
+
+- Header: "IMPOSSIBLE TECHNIQUES" (per reference)
+- Replace list with toggle switches
+- Visual indicator when technique is "available" vs "locked"
+- Subtle hover animations
 
 ---
 
-## Part 4: Recook Feature for Rejected Dishes
+## Part 4: Kitchen Log - Terminal CLI Style
 
-### 4.1 Update Types
+### 4.1 Dark Terminal Background
 
-Add `recookCount` to Order type:
+**Modify `KitchenLog.tsx`:**
 
-```typescript
-interface Order {
-  // ... existing
-  recookCount?: number;
-  previousAttempts?: Array<{
-    servedDish: string;
-    reasoning: string;
-    timestamp: number;
-  }>;
-}
-```
-
-### 4.2 Add Recook to KitchenContext
-
-```typescript
-const recookOrder = useCallback((orderId: string) => {
-  setOrders(prev => prev.map(order => 
-    order.id === orderId 
-      ? { 
-          ...order, 
-          status: 'not_started' as const,
-          recookCount: (order.recookCount || 0) + 1,
-          previousAttempts: [
-            ...(order.previousAttempts || []),
-            {
-              servedDish: order.servedDish || '',
-              reasoning: order.judgeResult?.reasoning || '',
-              timestamp: Date.now()
-            }
-          ],
-          // Keep the original dish name
-          judgeResult: undefined,
-          servedDish: undefined,
-          review: undefined,
-        }
-      : order
-  ));
-}, []);
-```
-
-### 4.3 Update DishesArchive with Recook Button
-
-For rejected dishes, show a "Recook" button:
+Transform to classic CLI aesthetic:
+- Dark background (near-black or dark slate)
+- Light/green monospace text
+- "count: ????" indicator in header corner
+- Prompt-style prefixes for entries (> or $)
 
 ```tsx
-{dish.status === 'rejected' && (
-  <div className="ml-9 mt-3 flex items-center gap-3">
-    <span className="text-xs text-muted-foreground">
-      Something felt off.
-    </span>
-    <Button 
-      variant="outline" 
-      size="sm"
-      onClick={() => recookOrder(dish.id)}
-    >
-      Recook
-    </Button>
+<section className="px-6 py-4">
+  <div className="rounded-lg overflow-hidden border border-border">
+    {/* Header with count */}
+    <div className="flex justify-between items-center px-4 py-2 bg-muted border-b border-border">
+      <h2 className="font-bold uppercase text-sm tracking-wide">Kitchen Log</h2>
+      <span className="text-xs text-muted-foreground font-mono">count: {timeline.length}</span>
+    </div>
+    
+    {/* Terminal body */}
+    <div className="bg-slate-900 p-4 font-mono text-sm text-slate-100">
+      {timeline.map(event => (
+        <p className="leading-relaxed">
+          <span className="text-slate-500">&gt;</span> {formatLogEntry(event)}
+        </p>
+      ))}
+    </div>
   </div>
-)}
-```
-
-### 4.4 Update OrderCard for Recook State
-
-Show recook indicator if order has been attempted before:
-
-```tsx
-{order.recookCount && order.recookCount > 0 && (
-  <div className="text-xs text-muted-foreground text-center">
-    Attempt {order.recookCount + 1}
-  </div>
-)}
+</section>
 ```
 
 ---
 
-## Files to Create/Modify
+## Part 5: Chefs Section Enhancement
+
+### 5.1 Agent Card Redesign
+
+**Modify `ChefsSection.tsx`:**
+
+Match reference style with:
+- Larger, more playful avatar illustrations (emoji-based but styled)
+- Quirky titles with observational descriptions
+- "Observe" / "Open" / "Upgrade" styled action buttons
+
+```text
++---------------------------------------+
+|  [Avatar]                             |
+|                                       |
+|  The Alchemist Unit                   |
+|  Crafts transformation stages         |
+|  across arguments.                    |
+|                                       |
+|  [Q Observe]                          |
++---------------------------------------+
+```
+
+### 5.2 Agent Avatar Component
+
+**New file: `src/components/kitchen/AgentAvatar.tsx`**
+
+Styled avatars with soft gradients matching agent type:
+- Chef (Alchemist): Warm orange/coral gradient
+- Sous (Transmuter): Cool blue/teal gradient
+- Expeditor (Oracle): Purple/indigo gradient
+
+---
+
+## Part 6: Ingredients Panel - Checkbox List Style
+
+### 6.1 Ingredient Item Redesign
+
+**Modify `IngredientsPanel.tsx`:**
+
+- Each ingredient as a checkbox row (matching reference)
+- Custom styled checkbox component
+- Playful hover effects
+- Subtle gradient backgrounds on selected items
+
+```tsx
+<div className="flex items-center gap-3 py-1.5">
+  <Checkbox id={ingredient.id} className="rounded" />
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <span className="text-base">{ingredient.emoji}</span>
+    <span>{ingredient.name}</span>
+  </label>
+</div>
+```
+
+---
+
+## Part 7: Audio Log Button
+
+### 7.1 Add "Audio Log" Button to Orders Header
+
+**Modify `OrderQueue.tsx`:**
+
+Add an audio/sound indicator button matching reference:
+
+```tsx
+<div className="flex justify-between items-center mb-4">
+  <div>
+    <h2>THE ORDERS OF THE UNIVERSE</h2>
+    <p>Try Factilee Fanefilie θgent.</p>
+  </div>
+  <Button variant="outline" size="sm" className="gap-2">
+    <Volume2 className="h-4 w-4" />
+    Audio Log
+  </Button>
+</div>
+```
+
+---
+
+## File Changes Summary
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/index.css` | Modify | Update color palette for warm cream theme |
-| `src/pages/Index.tsx` | Modify | Restructure to three-column layout |
-| `src/components/kitchen/Header.tsx` | Modify | Add audio toggle, update styling |
-| `src/components/kitchen/HeroBanner.tsx` | Modify | Whimsical procedural message |
-| `src/components/kitchen/OrderQueue.tsx` | Modify | Grid layout for order cards |
-| `src/components/kitchen/OrderCard.tsx` | Modify | Visual redesign with difficulty badges |
-| `src/components/kitchen/InventoryPanel.tsx` | Modify | Split into sidebar layout with checkboxes |
-| `src/components/kitchen/KitchenStaff.tsx` | Modify | Horizontal "Chefs of Reality" section |
-| `src/components/kitchen/DishesArchive.tsx` | Modify | Add Recook button for rejected dishes |
-| `src/context/KitchenContext.tsx` | Modify | Add recookOrder function |
-| `src/lib/types.ts` | Modify | Add recookCount to Order |
-| `supabase/functions/cooking-agent/index.ts` | Modify | Force tool calls, add fallbacks |
-| `supabase/functions/judge-agent/index.ts` | Modify | Add fallback parsing |
-| `src/hooks/useCookingLoop.ts` | Modify | Add retry logic, auto-serve fallback |
-| `src/hooks/useSoundEffects.ts` | Modify | Add timeout, queue management |
-| `src/components/kitchen/AudioSettings.tsx` | Create | Audio toggle dropdown with key management |
+| `src/index.css` | Modify | Add rounded font, enhanced shadows, checkbox styles |
+| `src/components/kitchen/DishIllustration.tsx` | Create | SVG food illustrations with gradients |
+| `src/components/kitchen/OrderCard.tsx` | Modify | Add illustration area, status text, styled badge |
+| `src/components/kitchen/TechniqueToggle.tsx` | Create | Toggle switch component for techniques |
+| `src/components/kitchen/TechniquesPanel.tsx` | Modify | Use toggle switches, update header |
+| `src/components/kitchen/KitchenLog.tsx` | Modify | Dark terminal style, count indicator |
+| `src/components/kitchen/AgentCard.tsx` | Create | Styled agent cards with gradients |
+| `src/components/kitchen/ChefsSection.tsx` | Modify | Use new AgentCard, observational microcopy |
+| `src/components/kitchen/IngredientsPanel.tsx` | Modify | Checkbox list style |
+| `src/components/kitchen/OrderQueue.tsx` | Modify | Add Audio Log button |
+| `src/lib/dishColors.ts` | Create | Dish category to gradient color mapping |
+
+---
+
+## Visual Reference Implementation
+
+### Dish Illustration Logic
+
+Infer dish type from name keywords:
+
+```typescript
+function inferDishCategory(dishName: string): DishCategory {
+  const name = dishName.toLowerCase();
+  if (/pasta|carbonara|spaghetti|noodle|ramen/.test(name)) return 'pasta';
+  if (/salad|greens|lettuce/.test(name)) return 'salad';
+  if (/beef|steak|meat|pork|chicken/.test(name)) return 'meat';
+  if (/fish|shrimp|lobster|crab|sushi/.test(name)) return 'seafood';
+  if (/cake|pie|brulee|souffle|dessert|chocolate/.test(name)) return 'dessert';
+  if (/cosmic|quantum|nebula|void|infinity/.test(name)) return 'cosmic';
+  return 'default';
+}
+```
+
+### Grainy Texture Overlay
+
+Add CSS noise texture for that 3D "juicy" effect:
+
+```css
+.grainy-texture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,..."); /* noise pattern */
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+```
 
 ---
 
 ## Expected Results
 
 After implementation:
-
-1. **UI** matches the playful, warm aesthetic of the reference image with rounded cards, coral buttons, and three-column layout
-2. **Sound effects** work reliably with ability to update API key from the UI
-3. **Cooking flow** completes every time with intelligent fallbacks when agents don't return expected responses
-4. **Recook** button appears for rejected dishes, preserving attempt history
+1. **Typography**: Mixed rounded sans-serif headers with monospace body text
+2. **Order Cards**: Feature stylized gradient illustrations instead of plain emoji
+3. **Techniques**: Toggle switches in a settings-panel style
+4. **Kitchen Log**: Dark terminal aesthetic with entry count
+5. **Chefs**: Gradient-styled avatar cards with quirky descriptions
+6. **Ingredients**: Checkbox list with playful hover states
+7. **Overall**: A "Professional Tool for an Impossible Task" vibe
 
 ---
 
 ## Technical Notes
 
-### Force Tool Calling
-Using `tool_choice: "required"` ensures the model always attempts a function call rather than returning plain text.
+### SVG Illustrations
+Rather than embedding actual food images, the illustrations will be:
+- Procedurally styled based on dish category
+- Gradient backgrounds with emoji overlay
+- CSS-based grainy texture for depth
+- This keeps bundle size small while maintaining the whimsical aesthetic
 
-### Fallback Chain
-1. Try to parse tool call from response
-2. Try to extract action from text content using regex
-3. Auto-serve with last created ingredient
-4. Never leave cooking loop in broken state
+### Performance
+- All illustrations use CSS gradients (no image loads)
+- Grainy texture is a single reused SVG data URL
+- Toggle switches use existing Radix Switch component
 
-### Sound System Queue
-Prevent multiple sounds from overlapping by maintaining a play queue with 500ms minimum gap between sounds.
