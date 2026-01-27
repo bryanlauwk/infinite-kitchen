@@ -1,329 +1,263 @@
 
-# Ingredient Discovery Filter + Realistic Sound Effects
+
+# Sound Effects & Discovery System Fix
 
 ## Overview
 
-This plan addresses two issues:
-1. **Only add raw/base ingredient discoveries** to the kitchen inventory, not intermediate cooking results like "seared beef" or "mixed vegetables"
-2. **Improve sound effect realism** by matching sounds to the actual cooking technique being used (e.g., fruit salad preparation should use peel/wash/toss sounds, not pan fry sounds)
+This plan addresses two critical issues:
+1. **ElevenLabs Sound Effects**: Ensure sounds are generated correctly and match realistic cooking scenarios (no generic sounds)
+2. **Ingredient Discovery**: Verify that only true base ingredient discoveries are added to the permanent ingredient list
 
 ---
 
-## Part 1: Filter New Ingredient Discoveries
+## Current State Analysis
 
-### Current Problem
-Every alchemy result is added to the "Newly Discovered" inventory. This creates clutter with intermediate cooking states like:
-- "Seared Salmon" (intermediate, not a base ingredient)
-- "Whisked Eggs" (intermediate step)
-- "Avocado Toast" (final dish, not discoverable ingredient)
+### Sound Effect System
+The ElevenLabs integration has the correct structure but has potential issues:
+- The `ELEVENLABS_API_KEY` secret is configured (verified)
+- The edge function is properly structured with correct API endpoint
+- Sound prompts are well-defined with 100+ technique-specific descriptions
+- Cold vs hot technique distinction exists in `coldTechniques` set
 
-### Solution
-Modify the alchemy agent to classify results and only add truly **new raw/base ingredients** to the permanent discovery list.
+**Potential Issues Identified:**
+1. No error handling for empty audio responses from ElevenLabs
+2. The `fetchSound` silently fails without user feedback
+3. Duration calculations in `getActionDuration` don't include all cold prep techniques
+4. Missing some cold prep techniques in the duration calculation
 
-### What Qualifies as a "Discoverable" Ingredient?
-| Type | Example | Add to Inventory? |
-|------|---------|-------------------|
-| Raw sub-ingredient | Cracking egg reveals "Egg White" and "Egg Yolk" | Yes |
-| Component extraction | Clarifying butter reveals "Ghee" | Yes |
-| Intermediate cooking | "Seared Beef", "Whisked Eggs" | No (only track in timeline) |
-| Final dish | "Avocado Toast", "Fruit Salad" | No |
+### Discovery System
+The alchemy agent has `isDiscovery` classification, but:
+- The discovery logic in `useCookingLoop.ts` is correct (only adds to inventory if `isDiscovery: true`)
+- The InventoryPanel correctly filters by `isGenerated` flag
+- The timeline shows discoveries with special styling
 
-### Implementation
+---
 
-#### 1. Update Alchemy Agent (`supabase/functions/alchemy-agent/index.ts`)
+## Part 1: Sound Effect System Improvements
 
-Add a new field `isDiscovery` to classify results:
+### 1.1 Enhanced Error Handling in Edge Function
+
+Update `supabase/functions/elevenlabs-sfx/index.ts` to provide better error feedback:
+
+```typescript
+// Add validation for response size (empty audio = failed generation)
+const audioBuffer = await response.arrayBuffer();
+
+if (audioBuffer.byteLength < 1000) {
+  console.error('Audio response too small, likely failed generation');
+  return new Response(
+    JSON.stringify({ error: 'Sound generation failed - audio too short' }),
+    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+```
+
+### 1.2 Better Client-Side Error Feedback
+
+Update `src/hooks/useSoundEffects.ts` to:
+- Log more detailed errors for debugging
+- Check response content-type before treating as audio
+- Add graceful degradation when sounds fail
+
+```typescript
+const fetchSound = useCallback(async (prompt: string, duration: number = 3): Promise<Blob | null> => {
+  // ... existing cache check ...
+
+  try {
+    const response = await fetch(/* ... */);
+
+    if (!response.ok) {
+      console.warn('SFX fetch failed:', response.status, await response.text());
+      return null;
+    }
+
+    // Verify we got audio, not JSON error
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      const error = await response.json();
+      console.warn('SFX generation error:', error);
+      return null;
+    }
+
+    const blob = await response.blob();
+    
+    // Validate audio size (sanity check)
+    if (blob.size < 1000) {
+      console.warn('SFX audio too small, likely failed');
+      return null;
+    }
+
+    soundCache.set(cacheKey, blob);
+    return blob;
+  } catch (error) {
+    console.warn('SFX fetch error:', error);
+    return null;
+  }
+}, []);
+```
+
+### 1.3 Complete Cold Technique Duration Mapping
+
+Update `getActionDuration` in `useSoundEffects.ts` to include ALL cold prep techniques:
+
+```typescript
+function getActionDuration(action: string): number {
+  const normalized = action.toLowerCase();
+  
+  // Cold/quick preparations (2 seconds)
+  if (/toss|combine|arrange|plate|drizzle|sprinkle|wash|clean|dry|assemble|layer/.test(normalized)) {
+    return 2;
+  }
+  if (/peel|core|hull|segment|pit|scoop|zest|squeeze|muddle|rinse/.test(normalized)) {
+    return 2;
+  }
+  if (/garnish|slice_fruit|mix_salad/.test(normalized)) {
+    return 2;
+  }
+  
+  // Quick actions (2 seconds)
+  if (/crack|chop|dice|slice|score|flip|season|press/.test(normalized)) {
+    return 2;
+  }
+  
+  // Medium actions (3 seconds)
+  if (/sear|saute|whisk|stir|fold|mix|blend|mash|scramble/.test(normalized)) {
+    return 3;
+  }
+  
+  // Longer continuous actions (4 seconds)
+  if (/boil|simmer|roast|bake|braise|reduce|stew|fry|grill/.test(normalized)) {
+    return 4;
+  }
+  
+  // Default
+  return 3;
+}
+```
+
+### 1.4 Add Missing Cold Prep Sounds
+
+Add any missing cold preparation techniques to `src/lib/sounds.ts`:
+
+```typescript
+// Add to techniqueSounds
+cut: "knife cutting through food on cutting board",
+prep: "general food preparation sounds, gentle kitchen work",
+prepare: "quiet preparation, gathering ingredients",
+portion: "dividing food into portions, careful cutting",
+separate: "gently separating components, soft pulling apart",
+extract: "extracting component from food, careful separation",
+```
+
+---
+
+## Part 2: Discovery System Verification
+
+### 2.1 Update Alchemy Agent Prompt (Clarify Discovery Rules)
+
+The current alchemy agent prompt is good but can be strengthened. Update `supabase/functions/alchemy-agent/index.ts`:
 
 ```typescript
 const systemPrompt = `You are an alchemy agent that determines what happens when cooking actions are performed on ingredients.
 
-You must respond with a JSON object describing the result AND classify whether this result reveals a new base ingredient.
+You must respond with a JSON object describing the result AND classify whether this result reveals a new BASE ingredient.
 
-A result is a DISCOVERY (isDiscovery: true) only if it:
-- Reveals a previously hidden component (egg → egg yolk, egg white)
-- Extracts a new base ingredient (clarify butter → ghee)
-- Separates into fundamental components (zest lemon → lemon zest)
+IMPORTANT: isDiscovery should be TRUE only in rare cases:
+- Separating an egg reveals egg yolk and egg white (hidden components)
+- Clarifying butter produces ghee (extracted pure ingredient)
+- Zesting a lemon produces lemon zest (separated component)
+- Cracking a coconut reveals coconut water and coconut meat
 
-A result is NOT a discovery (isDiscovery: false) if it:
-- Is an intermediate cooking step (seared beef, whisked eggs)
-- Is a prepared dish (scrambled eggs, avocado toast)
-- Is a transformed combination (mixed vegetables, fruit salad)
+isDiscovery should be FALSE for:
+- Any cooked result (scrambled eggs, grilled chicken, sautéed vegetables)
+- Any mixed result (fruit salad, mixed greens, combined ingredients)
+- Any transformed dish (toast, soup, sauce, puree)
+- Any intermediate cooking step (whisked eggs, seared beef, chopped onions)
 
-Examples:
-- crack([🥚 egg]) → {resultName: "Raw Egg", isDiscovery: false} - opening shell
-- separate([🥚 raw egg]) → {resultName: "Egg Yolk", isDiscovery: true} - reveals component
-- clarify([🧈 butter]) → {resultName: "Ghee", isDiscovery: true} - extracts new ingredient
-- pan_fry([🍳 egg_mixture]) → {resultName: "Scrambled Eggs", isDiscovery: false} - cooking step`;
+Most actions result in isDiscovery: false. Only true component extraction/separation = discovery.
+
+Be creative but realistic. Consider:
+- What would actually happen when you ${action} these ingredients?
+- What is the resulting food item called?
+- Pick an appropriate emoji that represents the result
+- Give a brief poetic description (under 10 words)`;
 ```
 
-Add `isDiscovery` to the tool parameters:
+### 2.2 Strengthen Discovery Classification in Tool Schema
+
+Update the tool description to be more explicit:
 
 ```typescript
-parameters: {
-  type: "object",
-  properties: {
-    resultName: { type: "string", ... },
-    resultId: { type: "string", ... },
-    emoji: { type: "string", ... },
-    description: { type: "string", ... },
-    isDiscovery: {
-      type: "boolean",
-      description: "True only if this reveals a new base ingredient component (like separating egg into yolk/white, or clarifying butter into ghee). False for cooking steps and dishes."
-    }
-  },
-  required: ["resultName", "resultId", "emoji", "description", "isDiscovery"]
-}
-```
-
-#### 2. Update Cooking Loop (`src/hooks/useCookingLoop.ts`)
-
-Only add to inventory if `isDiscovery` is true:
-
-```typescript
-// After getting alchemy result
-const alchemyResult = await callAlchemyAgent(actionName, usedIngredients);
-
-// Always track in local inventory for cooking continuation
-const newIngredient: Ingredient = {
-  id: alchemyResult.resultId,
-  name: alchemyResult.resultName,
-  emoji: alchemyResult.emoji,
-  category: 'generated',
-  isGenerated: true,
-};
-
-// Add to LOCAL cooking inventory (for this session only)
-currentInventory = [...currentInventory, newIngredient];
-
-// Only add to PERSISTENT inventory if it's a discovery
-if (alchemyResult.isDiscovery) {
-  addToInventory(newIngredient);
-  
-  addTimelineEvent({
-    type: 'result',
-    agent: 'sous',
-    content: `✨ NEW DISCOVERY: ${alchemyResult.emoji} ${alchemyResult.resultName}`,
-    result: { ... },
-  });
-} else {
-  addTimelineEvent({
-    type: 'result',
-    agent: 'sous',
-    content: alchemyResult.description,
-    result: { ... },
-  });
-}
-```
-
-#### 3. Update API Types (`src/lib/api.ts`)
-
-Update the alchemy result interface:
-
-```typescript
-interface AlchemyResult {
-  resultName: string;
-  resultId: string;
-  emoji: string;
-  description: string;
-  isDiscovery: boolean;  // NEW
+isDiscovery: {
+  type: "boolean",
+  description: "Almost always FALSE. Only TRUE when revealing hidden sub-components (like separating egg → yolk/white, or clarifying butter → ghee). FALSE for all cooking steps, dishes, and combinations."
 }
 ```
 
 ---
 
-## Part 2: Realistic Technique-Aware Sound Effects
+## Part 3: PRD Microcopy Updates
 
-### Current Problem
-The sound system has 100+ technique prompts, but:
-- Fallback logic sometimes returns generic sounds
-- The action-to-sound matching doesn't consider the dish context
-- Fruit salad preparation might incorrectly trigger "pan fry" sounds
+Based on the provided PRD, update component text to match the desired tone.
 
-### Solution
-Improve the sound matching to be context-aware based on the ACTUAL technique being called.
-
-### Key Insight
-The cooking agent already chooses the correct technique (e.g., `toss`, `peel`, `combine` for fruit salad). The issue is ensuring:
-1. Every technique has an appropriate sound prompt
-2. The fallback doesn't default to "sizzling" sounds for cold prep
-3. Ingredient modifiers don't add heat sounds to cold dishes
-
-### Implementation
-
-#### 1. Add Cold/No-Heat Technique Sounds (`src/lib/sounds.ts`)
-
-Add new techniques and improve existing ones for cold preparation:
+### 3.1 Update InventoryPanel Headers
 
 ```typescript
-export const techniqueSounds: Record<string, string> = {
-  // ... existing ...
+// In InventoryPanel.tsx
+<h2 className="font-bold uppercase text-sm tracking-wide">Ingredients Found</h2>
+<p className="text-xs text-muted-foreground">
+  Things the kitchen seems to know now.
+</p>
 
-  // ===== COLD PREPARATION (NEW) =====
-  wash: "fresh vegetables rinsing under running water, water splashing gently in sink",
-  clean: "hands rubbing vegetables clean, water droplets falling",
-  dry: "kitchen towel patting food dry, soft fabric sounds",
-  assemble: "gentle placement of ingredients, soft arranging sounds",
-  arrange: "careful food arranging on plate, quiet composition",
-  hull: "strawberry stems being removed with soft pop",
-  pit: "stone fruit pit being removed, knife cutting around",
-  segment: "citrus being separated into segments, membrane tearing",
-  
-  // Update toss to be salad-specific
-  toss: "salad tongs tossing mixed greens in large bowl, leaves rustling gently",
-  
-  // Update combine for cold context
-  combine: "ingredients being gently mixed together in bowl, soft stirring",
-  
-  // Add fruit-specific sounds
-  peel_fruit: "fruit skin being peeled away, juice dripping lightly",
-  scoop: "spoon scooping soft fruit flesh, gentle scraping",
-};
+// Techniques section
+<h2 className="font-bold uppercase text-sm tracking-wide">Techniques</h2>
+<p className="text-xs text-muted-foreground">
+  Ways the kitchen behaves.
+</p>
 ```
 
-#### 2. Improve Category Fallback Logic (`src/lib/sounds.ts`)
+### 3.2 Update Discovery Labels
 
-Update the `getCategorySound` function to detect cold vs. hot preparations:
-
-```typescript
-function getCategorySound(action: string): string {
-  const normalized = action.toLowerCase();
-  
-  // Cold/no-heat preparations FIRST (priority)
-  if (/wash|rinse|clean|dry/.test(normalized)) {
-    return "running water and gentle cleaning sounds";
-  }
-  if (/toss|mix|combine|assemble|arrange/.test(normalized)) {
-    return "gentle mixing and arranging sounds in bowl";
-  }
-  if (/peel|core|hull|pit|segment|scoop/.test(normalized)) {
-    return "soft fruit preparation, gentle cutting and separating";
-  }
-  
-  // Hot preparations
-  if (/fry|sear|grill|saute|pan/.test(normalized)) {
-    return "food sizzling in hot pan with oil bubbling";
-  }
-  if (/boil|simmer|steam|poach/.test(normalized)) {
-    return "water bubbling gently in pot";
-  }
-  if (/chop|slice|dice|cut|mince/.test(normalized)) {
-    return "sharp knife cutting on wooden board";
-  }
-  if (/whisk|stir|blend/.test(normalized)) {
-    return "utensil mixing ingredients in bowl";
-  }
-  if (/bake|roast|oven/.test(normalized)) {
-    return "oven with gentle heat and occasional sizzle";
-  }
-  
-  // Final fallback - generic but neutral
-  return "kitchen preparation sounds, utensils and ingredients";
-}
-```
-
-#### 3. Context-Aware Ingredient Modifiers (`src/lib/sounds.ts`)
-
-Don't add heat-related modifiers for cold preparations:
+Change from "NEW" badge to something more subtle per PRD (no gamification):
 
 ```typescript
-// Add detection for cold techniques
-const coldTechniques = new Set([
-  'toss', 'mix', 'combine', 'wash', 'rinse', 'peel', 'core',
-  'hull', 'pit', 'segment', 'scoop', 'assemble', 'arrange',
-  'clean', 'dry', 'garnish', 'plate', 'drizzle', 'sprinkle'
-]);
-
-export function getSoundPrompt(action: string, ingredients?: string[]): string {
-  const normalized = action.toLowerCase().replace(/[-\s]/g, '_');
-  
-  // Get base technique sound
-  let basePrompt = techniqueSounds[normalized];
-  
-  // ... existing fallback logic ...
-  
-  // Only add ingredient modifiers for HOT techniques
-  // Skip for cold preparations to avoid "sizzling" sounds
-  if (ingredients && ingredients.length > 0 && !coldTechniques.has(normalized)) {
-    const ingredientModifier = getIngredientModifier(ingredients);
-    if (ingredientModifier) {
-      return `${basePrompt}, ${ingredientModifier}`;
-    }
-  }
-  
-  return basePrompt;
-}
+// In IngredientTile.tsx - Remove "NEW" badge for subtler indication
+// Just use the styling without explicit "NEW" text
+{isNew && (
+  <span className="w-1.5 h-1.5 rounded-full bg-gemini animate-pulse" />
+)}
 ```
 
 ---
 
 ## File Changes Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/functions/alchemy-agent/index.ts` | Modify | Add `isDiscovery` classification |
-| `src/hooks/useCookingLoop.ts` | Modify | Only persist discoveries, not intermediate steps |
-| `src/lib/api.ts` | Modify | Add `isDiscovery` to AlchemyResult interface |
-| `src/lib/sounds.ts` | Modify | Add cold prep sounds, improve fallback logic |
+| File | Changes | Purpose |
+|------|---------|---------|
+| `supabase/functions/elevenlabs-sfx/index.ts` | Add audio size validation | Catch failed generations |
+| `src/hooks/useSoundEffects.ts` | Add content-type check, fix duration mapping | Better error handling, complete cold prep support |
+| `src/lib/sounds.ts` | Add missing cold prep techniques | Complete technique coverage |
+| `supabase/functions/alchemy-agent/index.ts` | Strengthen discovery prompt | Reduce false discovery classifications |
+| `src/components/kitchen/InventoryPanel.tsx` | Update microcopy | Match PRD tone |
+| `src/components/tiles/IngredientTile.tsx` | Subtle discovery indicator | Remove gamification language |
 
 ---
 
-## Expected Behavior After Changes
+## Testing Plan
 
-### Ingredient Discovery
-```text
-Order: Avocado Toast
+After implementation:
 
-Step 1: crack(egg) → Raw Egg ❌ Not a discovery
-Step 2: whisk(raw_egg) → Whisked Egg ❌ Not a discovery  
-Step 3: mash(avocado) → Mashed Avocado ❌ Not a discovery
-Step 4: toast(bread) → Toast ❌ Not a discovery
-Step 5: serve(avocado_toast) → Complete
+1. **Sound Effects Test**
+   - Order "Fruit Salad" and verify sounds are: washing, peeling, slicing, tossing (no sizzling)
+   - Order "Scrambled Eggs" and verify sounds include: cracking, whisking, sizzling
+   - Check console for any SFX errors
 
-Newly Discovered: (empty - no new base ingredients revealed)
+2. **Discovery Test**
+   - Cook multiple dishes and verify "Newly Discovered" section remains empty for normal cooking
+   - If the AI ever uses "separate" or "clarify" actions, those should add discoveries
+   - Intermediate results like "whisked eggs" should NOT appear in permanent inventory
 
-BUT if we did:
-Step X: separate(raw_egg) → Egg Yolk ✅ DISCOVERY! Added to inventory
-Step Y: clarify(butter) → Ghee ✅ DISCOVERY! Added to inventory
-```
+3. **Microcopy Test**
+   - Verify all panel headers match PRD language
+   - Confirm no "success/failure" language appears
 
-### Sound Effects
-```text
-Order: Fruit Salad
-
-Action: peel([apple]) → "fruit skin being peeled away, juice dripping lightly"
-Action: slice([apple, banana]) → "long smooth knife strokes slicing through food cleanly"
-Action: toss([sliced_fruits]) → "salad tongs tossing mixed greens in large bowl, leaves rustling gently"
-Action: drizzle([honey]) → "thin stream of honey pouring over dish"
-Action: serve → "plate sliding onto pass, chef calling order up"
-
-NO sizzling, frying, or heat sounds - all cold preparation appropriate!
-```
-
----
-
-## Technical Notes
-
-### Why Separate Local vs. Persistent Inventory?
-The cooking loop needs ALL results (including intermediate) to continue cooking properly. The AI must know that "whisked_eggs" exists to then `pan_fry` them.
-
-- `currentInventory`: Local array for this cooking session - includes everything
-- `addToInventory()`: Persistent React state - only true discoveries
-
-### Sound Duration Considerations
-Cold preparations should generally have shorter durations:
-
-```typescript
-function getActionDuration(action: string): number {
-  const normalized = action.toLowerCase();
-  
-  // Cold/quick preparations
-  if (/toss|combine|arrange|plate|drizzle|sprinkle/.test(normalized)) {
-    return 2;
-  }
-  if (/peel|core|hull|segment|wash/.test(normalized)) {
-    return 2;
-  }
-  
-  // Existing heat-based durations...
-}
-```
