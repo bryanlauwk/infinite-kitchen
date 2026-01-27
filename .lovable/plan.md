@@ -1,263 +1,420 @@
 
-
-# Sound Effects & Discovery System Fix
+# Infinite Kitchen UI Transformation Plan
 
 ## Overview
 
-This plan addresses two critical issues:
-1. **ElevenLabs Sound Effects**: Ensure sounds are generated correctly and match realistic cooking scenarios (no generic sounds)
-2. **Ingredient Discovery**: Verify that only true base ingredient discoveries are added to the permanent ingredient list
+This plan addresses four major changes:
+1. **UI Transformation** - Match the reference image's playful, neal.fun-like aesthetic
+2. **Sound Effect System** - Fix ElevenLabs integration and allow API key re-entry
+3. **Agent Function Calling** - Improve reliability to prevent cooking flow failures
+4. **Recook Feature** - Add ability to retry rejected dishes
 
 ---
 
-## Current State Analysis
+## Part 1: UI Transformation (Reference Image Match)
 
-### Sound Effect System
-The ElevenLabs integration has the correct structure but has potential issues:
-- The `ELEVENLABS_API_KEY` secret is configured (verified)
-- The edge function is properly structured with correct API endpoint
-- Sound prompts are well-defined with 100+ technique-specific descriptions
-- Cold vs hot technique distinction exists in `coldTechniques` set
+The reference image shows a distinct visual style:
+- **Warm cream/off-white background** instead of pure white
+- **Rounded pastel card backgrounds** for orders (with dish illustrations)
+- **Difficulty badges** (EASY) in colored corner labels
+- **"Summon" buttons** instead of "Cook"
+- **Three-column layout**: Ingredients (left), Orders (center), Techniques (right)
+- **"The Chefs of Reality"** section with agent avatars
+- **Audio toggle** button in header
+- **Hero banner** with whimsical welcome message
 
-**Potential Issues Identified:**
-1. No error handling for empty audio responses from ElevenLabs
-2. The `fetchSound` silently fails without user feedback
-3. Duration calculations in `getActionDuration` don't include all cold prep techniques
-4. Missing some cold prep techniques in the duration calculation
+### 1.1 Layout Restructure
 
-### Discovery System
-The alchemy agent has `isDiscovery` classification, but:
-- The discovery logic in `useCookingLoop.ts` is correct (only adds to inventory if `isDiscovery: true`)
-- The InventoryPanel correctly filters by `isGenerated` flag
-- The timeline shows discoveries with special styling
+Reorganize from vertical stacking to the three-panel + agents layout:
 
----
+```text
++------------------------------------------------------------------+
+|  INFINITE KITCHEN                                    [Audio]      |
+|  A culinary sandbox powered by impossible & endless possibilities.|
++------------------------------------------------------------------+
+|  [=================== HERO BANNER ====================]          |
+|  Welcome, flavor czars! Your function: beyond of dream. meal     |
++------------------------------------------------------------------+
+|  INGREDIENTS  |  THE ORDERS OF THE UNIVERSE         |  TECHNIQUES |
+|  ☐ Flour      |  [Card] [Card] [Card] [Card]        |  🍳 fry()   |
+|  ☐ Egg        |  [Card] [Card] [Card] [Card]        |  🔪 chop()  |
+|  ...          |                                      |  ...        |
++--------------+--------------------------------------+--------------+
+|              THE CHEFS OF REALITY                                 |
+|  [Alchemist]      [Skies Conf]       [Noodle Weaver]             |
++------------------------------------------------------------------+
+|  KITCHEN LOG                                       count: ????    |
+|  > log entries...                                                 |
++------------------------------------------------------------------+
+```
 
-## Part 1: Sound Effect System Improvements
+### 1.2 Color Palette Updates (index.css)
 
-### 1.1 Enhanced Error Handling in Edge Function
-
-Update `supabase/functions/elevenlabs-sfx/index.ts` to provide better error feedback:
-
-```typescript
-// Add validation for response size (empty audio = failed generation)
-const audioBuffer = await response.arrayBuffer();
-
-if (audioBuffer.byteLength < 1000) {
-  console.error('Audio response too small, likely failed generation');
-  return new Response(
-    JSON.stringify({ error: 'Sound generation failed - audio too short' }),
-    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+```css
+:root {
+  /* Warm cream background */
+  --background: 45 30% 96%;
+  
+  /* Softer off-white cards */
+  --card: 45 40% 99%;
+  
+  /* Hero banner - warm yellow */
+  --hero: 45 80% 92%;
+  
+  /* Difficulty badges */
+  --easy: 142 71% 45%;
+  --intermediate: 45 93% 47%;
+  --hard: 0 84% 60%;
+  
+  /* Summon button - coral/salmon */
+  --summon: 16 85% 60%;
 }
 ```
 
-### 1.2 Better Client-Side Error Feedback
+### 1.3 Order Cards with Visual Style
 
-Update `src/hooks/useSoundEffects.ts` to:
-- Log more detailed errors for debugging
-- Check response content-type before treating as audio
-- Add graceful degradation when sounds fail
+Update `OrderCard.tsx` to match reference:
+- Rounded corners with subtle shadow
+- Difficulty badge in top-left corner
+- Larger dish emoji display area with background
+- "Summon" button with coral/salmon color
+- Status text ("Not started")
+
+### 1.4 Header with Audio Toggle
+
+Add audio toggle button to header that controls the sound system:
+
+```tsx
+// Header.tsx
+<header className="flex justify-between items-start px-6 py-4">
+  <div>
+    <h1 className="text-2xl font-bold">INFINITE KITCHEN</h1>
+    <p>A culinary sandbox powered by impossible & endless possibilities.</p>
+  </div>
+  <Button variant="outline" onClick={toggleSounds}>
+    {isEnabled ? <Volume2 /> : <VolumeX />}
+    Audio
+  </Button>
+</header>
+```
+
+### 1.5 Three-Column Layout
+
+Update `Index.tsx` to use CSS grid for the three-panel layout:
+- Left column: Ingredients (checkbox list style)
+- Center column: Orders grid (2x4 cards)
+- Right column: Techniques (function-style list)
+
+### 1.6 Hero Banner Update
+
+More whimsical, procedural message:
+
+```tsx
+<section className="bg-hero rounded-xl mx-6 my-4 px-6 py-4 text-center">
+  <p className="text-lg">
+    Welcome, flavor czars! Your function: beyond of dream. 🧑‍🍳 meal 👨‍🍳
+  </p>
+</section>
+```
+
+### 1.7 Agent Section ("The Chefs of Reality")
+
+Redesign the Kitchen Staff section:
+- Horizontal card layout with avatar images (emoji-based)
+- Quirky descriptions
+- "Observe" / "Open" / "Upgrade" buttons
+
+---
+
+## Part 2: Sound Effect System Fix
+
+### 2.1 Allow ElevenLabs API Key Re-entry
+
+Add a settings mechanism to update the API key:
+
+```tsx
+// Create AudioSettings component with key management
+const AudioSettings = () => {
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          <Volume2 /> Audio
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={toggleSounds}>
+          {isEnabled ? 'Mute' : 'Unmute'}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setShowKeyInput(true)}>
+          Update API Key
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+```
+
+Use the `add_secret` tool to prompt for ELEVENLABS_API_KEY update.
+
+### 2.2 Improve Sound System Reliability
+
+**Edge Function (`elevenlabs-sfx/index.ts`):**
+- Already has validation for audio size
+- Add retry logic with exponential backoff
+- Add more specific error messages
+
+**Client Hook (`useSoundEffects.ts`):**
+- Add timeout handling (10 second max wait)
+- Add queue system to prevent sound overlap
+- Better error logging for debugging
+
+---
+
+## Part 3: Agent Function Calling Improvements
+
+The cooking flow can fail when:
+1. **Cooking Agent** returns no function call (just text)
+2. **Alchemy Agent** fails to parse tool call response
+3. **Judge Agent** has no fallback for missing tool calls
+
+### 3.1 Cooking Agent Improvements
+
+Update `supabase/functions/cooking-agent/index.ts`:
 
 ```typescript
-const fetchSound = useCallback(async (prompt: string, duration: number = 3): Promise<Blob | null> => {
-  // ... existing cache check ...
+// Force function calling with tool_choice
+body: JSON.stringify({
+  model: "google/gemini-3-flash-preview",
+  messages,
+  tools,
+  tool_choice: "required",  // Force a tool call every time
+  temperature: 0.7,
+}),
 
-  try {
-    const response = await fetch(/* ... */);
-
-    if (!response.ok) {
-      console.warn('SFX fetch failed:', response.status, await response.text());
-      return null;
-    }
-
-    // Verify we got audio, not JSON error
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('application/json')) {
-      const error = await response.json();
-      console.warn('SFX generation error:', error);
-      return null;
-    }
-
-    const blob = await response.blob();
-    
-    // Validate audio size (sanity check)
-    if (blob.size < 1000) {
-      console.warn('SFX audio too small, likely failed');
-      return null;
-    }
-
-    soundCache.set(cacheKey, blob);
-    return blob;
-  } catch (error) {
-    console.warn('SFX fetch error:', error);
-    return null;
+// Better handling when no tool call returned
+if (!toolCalls || toolCalls.length === 0) {
+  // Extract action from text content as fallback
+  const content = message.content || "";
+  const actionMatch = content.match(/(\w+)\s*\(\s*\[(.*?)\]\s*\)/);
+  
+  if (actionMatch) {
+    return {
+      thinking: content,
+      functionCall: {
+        name: actionMatch[1],
+        ingredients: actionMatch[2].split(',').map(s => s.trim().replace(/['"]/g, ''))
+      },
+      isComplete: actionMatch[1] === 'serve'
+    };
   }
+  
+  // Last resort: auto-serve with available ingredients
+  return {
+    thinking: content + "\n\n[Auto-completing due to missing function call]",
+    functionCall: {
+      name: 'serve',
+      ingredients: [inventory[inventory.length - 1]?.id || 'dish']
+    },
+    isComplete: true
+  };
+}
+```
+
+### 3.2 Alchemy Agent Improvements
+
+The alchemy agent already has good fallback logic. Strengthen it:
+
+```typescript
+// Existing fallback is good, but add clearer logging
+if (!result) {
+  console.log("Generating fallback result for:", action, ingredients);
+  result = {
+    resultName: `${action.charAt(0).toUpperCase() + action.slice(1)}ed ${ingredientNames}`,
+    resultId: `${action}_result_${Date.now()}`,
+    emoji: ingredients[0]?.emoji || '🍳',
+    description: `The result of ${action}`,
+    isDiscovery: false
+  };
+}
+```
+
+### 3.3 Judge Agent Improvements
+
+Add fallback logic similar to alchemy agent:
+
+```typescript
+if (!toolCalls || toolCalls.length === 0) {
+  // Try to parse from text content
+  const content = data.choices?.[0]?.message?.content || "";
+  const matchLower = content.toLowerCase();
+  
+  const match = matchLower.includes('yes') || 
+                matchLower.includes('match') || 
+                matchLower.includes('fulfill');
+  
+  return new Response(JSON.stringify({
+    match: match,
+    confidence: 70,
+    reasoning: content.slice(0, 100) || "Evaluated based on dish similarity"
+  }), { ... });
+}
+```
+
+### 3.4 Cooking Loop Error Recovery
+
+Update `useCookingLoop.ts` to handle failures more gracefully:
+
+```typescript
+// Add retry logic for agent calls
+const callWithRetry = async (fn: () => Promise<any>, maxRetries = 2) => {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries) throw error;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+};
+
+// Use in loop
+const cookingResponse = await callWithRetry(() => 
+  callCookingAgent(currentInventory, order, conversationHistory)
+);
+```
+
+Also add: if no function call after 3 consecutive iterations, auto-serve with the last created ingredient.
+
+---
+
+## Part 4: Recook Feature for Rejected Dishes
+
+### 4.1 Update Types
+
+Add `recookCount` to Order type:
+
+```typescript
+interface Order {
+  // ... existing
+  recookCount?: number;
+  previousAttempts?: Array<{
+    servedDish: string;
+    reasoning: string;
+    timestamp: number;
+  }>;
+}
+```
+
+### 4.2 Add Recook to KitchenContext
+
+```typescript
+const recookOrder = useCallback((orderId: string) => {
+  setOrders(prev => prev.map(order => 
+    order.id === orderId 
+      ? { 
+          ...order, 
+          status: 'not_started' as const,
+          recookCount: (order.recookCount || 0) + 1,
+          previousAttempts: [
+            ...(order.previousAttempts || []),
+            {
+              servedDish: order.servedDish || '',
+              reasoning: order.judgeResult?.reasoning || '',
+              timestamp: Date.now()
+            }
+          ],
+          // Keep the original dish name
+          judgeResult: undefined,
+          servedDish: undefined,
+          review: undefined,
+        }
+      : order
+  ));
 }, []);
 ```
 
-### 1.3 Complete Cold Technique Duration Mapping
+### 4.3 Update DishesArchive with Recook Button
 
-Update `getActionDuration` in `useSoundEffects.ts` to include ALL cold prep techniques:
+For rejected dishes, show a "Recook" button:
 
-```typescript
-function getActionDuration(action: string): number {
-  const normalized = action.toLowerCase();
-  
-  // Cold/quick preparations (2 seconds)
-  if (/toss|combine|arrange|plate|drizzle|sprinkle|wash|clean|dry|assemble|layer/.test(normalized)) {
-    return 2;
-  }
-  if (/peel|core|hull|segment|pit|scoop|zest|squeeze|muddle|rinse/.test(normalized)) {
-    return 2;
-  }
-  if (/garnish|slice_fruit|mix_salad/.test(normalized)) {
-    return 2;
-  }
-  
-  // Quick actions (2 seconds)
-  if (/crack|chop|dice|slice|score|flip|season|press/.test(normalized)) {
-    return 2;
-  }
-  
-  // Medium actions (3 seconds)
-  if (/sear|saute|whisk|stir|fold|mix|blend|mash|scramble/.test(normalized)) {
-    return 3;
-  }
-  
-  // Longer continuous actions (4 seconds)
-  if (/boil|simmer|roast|bake|braise|reduce|stew|fry|grill/.test(normalized)) {
-    return 4;
-  }
-  
-  // Default
-  return 3;
-}
+```tsx
+{dish.status === 'rejected' && (
+  <div className="ml-9 mt-3 flex items-center gap-3">
+    <span className="text-xs text-muted-foreground">
+      Something felt off.
+    </span>
+    <Button 
+      variant="outline" 
+      size="sm"
+      onClick={() => recookOrder(dish.id)}
+    >
+      Recook
+    </Button>
+  </div>
+)}
 ```
 
-### 1.4 Add Missing Cold Prep Sounds
+### 4.4 Update OrderCard for Recook State
 
-Add any missing cold preparation techniques to `src/lib/sounds.ts`:
+Show recook indicator if order has been attempted before:
 
-```typescript
-// Add to techniqueSounds
-cut: "knife cutting through food on cutting board",
-prep: "general food preparation sounds, gentle kitchen work",
-prepare: "quiet preparation, gathering ingredients",
-portion: "dividing food into portions, careful cutting",
-separate: "gently separating components, soft pulling apart",
-extract: "extracting component from food, careful separation",
-```
-
----
-
-## Part 2: Discovery System Verification
-
-### 2.1 Update Alchemy Agent Prompt (Clarify Discovery Rules)
-
-The current alchemy agent prompt is good but can be strengthened. Update `supabase/functions/alchemy-agent/index.ts`:
-
-```typescript
-const systemPrompt = `You are an alchemy agent that determines what happens when cooking actions are performed on ingredients.
-
-You must respond with a JSON object describing the result AND classify whether this result reveals a new BASE ingredient.
-
-IMPORTANT: isDiscovery should be TRUE only in rare cases:
-- Separating an egg reveals egg yolk and egg white (hidden components)
-- Clarifying butter produces ghee (extracted pure ingredient)
-- Zesting a lemon produces lemon zest (separated component)
-- Cracking a coconut reveals coconut water and coconut meat
-
-isDiscovery should be FALSE for:
-- Any cooked result (scrambled eggs, grilled chicken, sautéed vegetables)
-- Any mixed result (fruit salad, mixed greens, combined ingredients)
-- Any transformed dish (toast, soup, sauce, puree)
-- Any intermediate cooking step (whisked eggs, seared beef, chopped onions)
-
-Most actions result in isDiscovery: false. Only true component extraction/separation = discovery.
-
-Be creative but realistic. Consider:
-- What would actually happen when you ${action} these ingredients?
-- What is the resulting food item called?
-- Pick an appropriate emoji that represents the result
-- Give a brief poetic description (under 10 words)`;
-```
-
-### 2.2 Strengthen Discovery Classification in Tool Schema
-
-Update the tool description to be more explicit:
-
-```typescript
-isDiscovery: {
-  type: "boolean",
-  description: "Almost always FALSE. Only TRUE when revealing hidden sub-components (like separating egg → yolk/white, or clarifying butter → ghee). FALSE for all cooking steps, dishes, and combinations."
-}
-```
-
----
-
-## Part 3: PRD Microcopy Updates
-
-Based on the provided PRD, update component text to match the desired tone.
-
-### 3.1 Update InventoryPanel Headers
-
-```typescript
-// In InventoryPanel.tsx
-<h2 className="font-bold uppercase text-sm tracking-wide">Ingredients Found</h2>
-<p className="text-xs text-muted-foreground">
-  Things the kitchen seems to know now.
-</p>
-
-// Techniques section
-<h2 className="font-bold uppercase text-sm tracking-wide">Techniques</h2>
-<p className="text-xs text-muted-foreground">
-  Ways the kitchen behaves.
-</p>
-```
-
-### 3.2 Update Discovery Labels
-
-Change from "NEW" badge to something more subtle per PRD (no gamification):
-
-```typescript
-// In IngredientTile.tsx - Remove "NEW" badge for subtler indication
-// Just use the styling without explicit "NEW" text
-{isNew && (
-  <span className="w-1.5 h-1.5 rounded-full bg-gemini animate-pulse" />
+```tsx
+{order.recookCount && order.recookCount > 0 && (
+  <div className="text-xs text-muted-foreground text-center">
+    Attempt {order.recookCount + 1}
+  </div>
 )}
 ```
 
 ---
 
-## File Changes Summary
+## Files to Create/Modify
 
-| File | Changes | Purpose |
-|------|---------|---------|
-| `supabase/functions/elevenlabs-sfx/index.ts` | Add audio size validation | Catch failed generations |
-| `src/hooks/useSoundEffects.ts` | Add content-type check, fix duration mapping | Better error handling, complete cold prep support |
-| `src/lib/sounds.ts` | Add missing cold prep techniques | Complete technique coverage |
-| `supabase/functions/alchemy-agent/index.ts` | Strengthen discovery prompt | Reduce false discovery classifications |
-| `src/components/kitchen/InventoryPanel.tsx` | Update microcopy | Match PRD tone |
-| `src/components/tiles/IngredientTile.tsx` | Subtle discovery indicator | Remove gamification language |
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/index.css` | Modify | Update color palette for warm cream theme |
+| `src/pages/Index.tsx` | Modify | Restructure to three-column layout |
+| `src/components/kitchen/Header.tsx` | Modify | Add audio toggle, update styling |
+| `src/components/kitchen/HeroBanner.tsx` | Modify | Whimsical procedural message |
+| `src/components/kitchen/OrderQueue.tsx` | Modify | Grid layout for order cards |
+| `src/components/kitchen/OrderCard.tsx` | Modify | Visual redesign with difficulty badges |
+| `src/components/kitchen/InventoryPanel.tsx` | Modify | Split into sidebar layout with checkboxes |
+| `src/components/kitchen/KitchenStaff.tsx` | Modify | Horizontal "Chefs of Reality" section |
+| `src/components/kitchen/DishesArchive.tsx` | Modify | Add Recook button for rejected dishes |
+| `src/context/KitchenContext.tsx` | Modify | Add recookOrder function |
+| `src/lib/types.ts` | Modify | Add recookCount to Order |
+| `supabase/functions/cooking-agent/index.ts` | Modify | Force tool calls, add fallbacks |
+| `supabase/functions/judge-agent/index.ts` | Modify | Add fallback parsing |
+| `src/hooks/useCookingLoop.ts` | Modify | Add retry logic, auto-serve fallback |
+| `src/hooks/useSoundEffects.ts` | Modify | Add timeout, queue management |
+| `src/components/kitchen/AudioSettings.tsx` | Create | Audio toggle dropdown with key management |
 
 ---
 
-## Testing Plan
+## Expected Results
 
 After implementation:
 
-1. **Sound Effects Test**
-   - Order "Fruit Salad" and verify sounds are: washing, peeling, slicing, tossing (no sizzling)
-   - Order "Scrambled Eggs" and verify sounds include: cracking, whisking, sizzling
-   - Check console for any SFX errors
+1. **UI** matches the playful, warm aesthetic of the reference image with rounded cards, coral buttons, and three-column layout
+2. **Sound effects** work reliably with ability to update API key from the UI
+3. **Cooking flow** completes every time with intelligent fallbacks when agents don't return expected responses
+4. **Recook** button appears for rejected dishes, preserving attempt history
 
-2. **Discovery Test**
-   - Cook multiple dishes and verify "Newly Discovered" section remains empty for normal cooking
-   - If the AI ever uses "separate" or "clarify" actions, those should add discoveries
-   - Intermediate results like "whisked eggs" should NOT appear in permanent inventory
+---
 
-3. **Microcopy Test**
-   - Verify all panel headers match PRD language
-   - Confirm no "success/failure" language appears
+## Technical Notes
 
+### Force Tool Calling
+Using `tool_choice: "required"` ensures the model always attempts a function call rather than returning plain text.
+
+### Fallback Chain
+1. Try to parse tool call from response
+2. Try to extract action from text content using regex
+3. Auto-serve with last created ingredient
+4. Never leave cooking loop in broken state
+
+### Sound System Queue
+Prevent multiple sounds from overlapping by maintaining a play queue with 500ms minimum gap between sounds.
