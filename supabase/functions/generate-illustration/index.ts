@@ -59,7 +59,7 @@ CRITICAL STYLE REQUIREMENTS:
 - Exaggerated, cute proportions
 - Soft drop shadows for depth
 - The food should look fun and appetizing but stylized like a cartoon`;
-    } else {
+    } else if (type === 'chef') {
       // Chef avatar
       prompt = `Create a playful cartoon robot chef character mascot.
 
@@ -74,6 +74,42 @@ CRITICAL STYLE REQUIREMENTS:
 - Think indie game mascot or app icon character
 - Should feel approachable and whimsical
 - Simple geometric shapes combined creatively`;
+    } else if (type === 'ingredient') {
+      // Ingredient icon
+      prompt = `Create a cute, playful vector illustration of a single "${dishName}" ingredient.
+
+CRITICAL STYLE REQUIREMENTS:
+- Cartoon/vector art style, NOT realistic
+- Soft gradients with rounded, squishy shapes  
+- Single ingredient centered, simple and iconic
+- Clean light pastel gradient background
+- NO text, NO labels, NO words
+- Think cute food app icon or emoji replacement
+- Exaggerated, friendly proportions
+- Soft drop shadows for depth
+- Small square format, centered composition`;
+    } else if (type === 'technique') {
+      // Cooking technique icon
+      prompt = `Create a playful vector icon representing the cooking technique "${dishName}".
+
+CRITICAL STYLE REQUIREMENTS:
+- Abstract, iconic representation of the cooking action
+- Vector art style with soft gradients
+- Simple geometric shapes suggesting the technique
+- Could include stylized cooking tools or effects
+- Clean light pastel gradient background
+- NO text, NO labels, NO words
+- Think indie game UI icon
+- Warm, inviting colors
+- Small square format, centered composition`;
+    } else {
+      prompt = `Create a playful, vector-stylized illustration of "${dishName}".
+      
+CRITICAL STYLE REQUIREMENTS:
+- Cartoon/vector art style, NOT realistic
+- Soft gradients with rounded shapes
+- Clean pastel gradient background
+- NO text, NO labels`;
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

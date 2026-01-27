@@ -7,9 +7,11 @@ interface IllustrationState {
   error: string | null;
 }
 
+type IllustrationType = 'dish' | 'chef' | 'ingredient' | 'technique';
+
 interface IllustrationContextType {
   getIllustration: (key: string) => IllustrationState;
-  requestIllustration: (dishName: string, type: 'dish' | 'chef') => Promise<string | null>;
+  requestIllustration: (name: string, type: IllustrationType) => Promise<string | null>;
 }
 
 const IllustrationContext = createContext<IllustrationContextType | undefined>(undefined);
@@ -22,8 +24,8 @@ export const useIllustrations = () => {
   return context;
 };
 
-// Generate a consistent key from dish name
-const generatePromptKey = (name: string, type: 'dish' | 'chef'): string => {
+// Generate a consistent key from name and type
+const generatePromptKey = (name: string, type: IllustrationType): string => {
   const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
   return `${type}_${normalized}`;
 };
@@ -66,10 +68,10 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
   }, [illustrations]);
 
   const requestIllustration = useCallback(async (
-    dishName: string,
-    type: 'dish' | 'chef'
+    name: string,
+    type: IllustrationType
   ): Promise<string | null> => {
-    const promptKey = generatePromptKey(dishName, type);
+    const promptKey = generatePromptKey(name, type);
 
     // Return cached URL if available
     if (illustrations[promptKey]?.url) {
@@ -109,10 +111,11 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
             return;
           }
 
-          // Generate new illustration - use chef-specific prompt if available
-          const actualPrompt = type === 'chef' && chefPrompts[dishName] 
-            ? chefPrompts[dishName] 
-            : dishName;
+          // Generate new illustration - use type-specific prompt if available
+          let actualPrompt = name;
+          if (type === 'chef' && chefPrompts[name]) {
+            actualPrompt = chefPrompts[name];
+          }
             
           const { data, error } = await supabase.functions.invoke('generate-illustration', {
             body: { dishName: actualPrompt, type, promptKey }
@@ -138,7 +141,7 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
             throw new Error('No image URL returned');
           }
         } catch (err) {
-          console.error(`Failed to generate illustration for ${dishName}:`, err);
+          console.error(`Failed to generate illustration for ${name}:`, err);
           setIllustrations(prev => ({
             ...prev,
             [promptKey]: { 

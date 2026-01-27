@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { categoryToGroup, groupLabels, groupOrder } from '@/lib/ingredientGroups';
 import { Ingredient, IngredientGroup } from '@/lib/types';
+import { IngredientIllustration } from './IngredientIllustration';
 
 export const IngredientsPanel: React.FC = () => {
   const { inventory } = useKitchen();
@@ -75,7 +76,7 @@ export const IngredientsPanel: React.FC = () => {
                     return (
                       <div 
                         key={`${group}-${ingredient.id}-${index}`}
-                        className="ingredient-row flex items-center gap-3 py-1.5 px-2 cursor-pointer"
+                        className="ingredient-row flex items-center gap-2 py-1.5 px-2 cursor-pointer"
                         onClick={() => toggleIngredient(ingredient.id)}
                       >
                         <Checkbox 
@@ -84,11 +85,14 @@ export const IngredientsPanel: React.FC = () => {
                           className="rounded border-muted-foreground/30 data-[state=checked]:bg-gemini data-[state=checked]:border-gemini"
                           onCheckedChange={() => toggleIngredient(ingredient.id)}
                         />
+                        <IngredientIllustration
+                          ingredientName={ingredient.name}
+                          fallbackEmoji={ingredient.emoji}
+                        />
                         <label 
                           htmlFor={`ing-${ingredient.id}-${index}`}
-                          className="flex items-center gap-2 text-sm cursor-pointer flex-1"
+                          className="text-sm cursor-pointer flex-1 truncate"
                         >
-                          <span className="text-base">{ingredient.emoji}</span>
                           <span className={isDiscovered ? 'text-gemini' : ''}>
                             {ingredient.name}
                           </span>
