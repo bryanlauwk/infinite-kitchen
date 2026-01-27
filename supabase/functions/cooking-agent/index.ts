@@ -271,7 +271,7 @@ When you're done cooking, call serve() with the final dish ingredient.`;
         model: "google/gemini-3-flash-preview",
         messages,
         tools,
-        tool_choice: "required", // Force a tool call
+        tool_choice: "auto", // Let the model decide when to call tools
       }),
     });
 
