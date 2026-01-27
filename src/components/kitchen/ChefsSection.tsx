@@ -2,19 +2,28 @@ import React from 'react';
 import { useAgents } from '@/context/AgentContext';
 import { AgentType } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Eye } from 'lucide-react';
 
-const chefProfiles: Record<AgentType, { title: string; quirk: string }> = {
+const chefProfiles: Record<AgentType, { 
+  title: string; 
+  quirk: string; 
+  gradientClass: string;
+}> = {
   chef: {
-    title: 'The Alchemist',
-    quirk: 'Sees ingredients as possibilities.',
+    title: 'The Alchemist Unit',
+    quirk: 'Crafts transformation stages across arguments.',
+    gradientClass: 'agent-gradient-alchemist',
   },
   sous: {
-    title: 'The Transmuter',
-    quirk: 'Transforms matter into meaning.',
+    title: 'The Transmuter Core',
+    quirk: 'Converts raw states into refined outputs.',
+    gradientClass: 'agent-gradient-transmuter',
   },
   expeditor: {
-    title: 'The Oracle',
-    quirk: 'Knows when a dish is ready.',
+    title: 'The Oracle Module',
+    quirk: 'Evaluates completion against expectations.',
+    gradientClass: 'agent-gradient-oracle',
   },
 };
 
@@ -24,11 +33,11 @@ export const ChefsSection: React.FC = () => {
   
   return (
     <section className="px-6 py-4">
-      <div className="border border-border rounded-lg p-4 bg-card">
+      <div className="border border-border rounded-2xl p-4 bg-card card-elevated">
         <div className="mb-4">
           <h2 className="font-bold uppercase text-sm tracking-wide">The Chefs of Reality</h2>
           <p className="text-xs text-muted-foreground">
-            Three minds, one purpose.
+            Three function callers, one purpose.
           </p>
         </div>
         
@@ -42,43 +51,47 @@ export const ChefsSection: React.FC = () => {
               <div 
                 key={type}
                 className={cn(
-                  "rounded-xl p-4 border transition-all",
-                  isActive 
-                    ? "border-processing bg-processing/5" 
-                    : "border-border bg-muted/30"
+                  "rounded-2xl p-4 border transition-all card-elevated",
+                  profile.gradientClass,
+                  isActive && "ring-2 ring-processing/40"
                 )}
               >
-                {/* Avatar & Name */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center text-2xl",
-                    isActive ? "bg-processing/20" : "bg-muted"
-                  )}>
-                    {agent.emoji}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm">{profile.title}</h3>
-                    <p className="text-xs text-muted-foreground">{agent.name}</p>
-                  </div>
+                {/* Avatar */}
+                <div className={cn(
+                  "w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4 bg-background/50 backdrop-blur-sm border border-border/50",
+                  isActive && "animate-pulse"
+                )}>
+                  {agent.emoji}
                 </div>
                 
-                {/* Status */}
-                <div className="text-xs text-muted-foreground mb-2">
+                {/* Title & Description */}
+                <h3 className="font-bold text-sm mb-1">{profile.title}</h3>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
                   {profile.quirk}
-                </div>
+                </p>
                 
                 {/* Current Activity */}
                 {isActive && agent.currentThinking && (
-                  <div className="text-xs text-processing truncate">
+                  <div className="text-[11px] text-processing truncate mb-3 bg-processing/10 rounded-lg px-2 py-1.5">
                     {agent.currentThinking}
                   </div>
                 )}
                 
                 {!isActive && (
-                  <div className="text-xs text-muted-foreground/50 italic">
-                    Waiting...
+                  <div className="text-[11px] text-muted-foreground/60 italic mb-3">
+                    Idle state
                   </div>
                 )}
+                
+                {/* Action Button */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full gap-2 text-xs rounded-xl bg-background/50"
+                >
+                  <Eye className="h-3 w-3" />
+                  Observe
+                </Button>
               </div>
             );
           })}

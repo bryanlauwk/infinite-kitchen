@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { tools } from '@/data/tools';
+import { TechniqueToggle } from './TechniqueToggle';
 
 // Group tools by category for display
 const categoryLabels: Record<string, string> = {
@@ -14,6 +15,23 @@ const categoryLabels: Record<string, string> = {
 };
 
 export const TechniquesPanel: React.FC = () => {
+  // Track active techniques (all enabled by default)
+  const [activeTechniques, setActiveTechniques] = useState<Set<string>>(
+    new Set(tools.map(t => t.id))
+  );
+  
+  const toggleTechnique = (id: string, active: boolean) => {
+    setActiveTechniques(prev => {
+      const next = new Set(prev);
+      if (active) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+  
   // Get unique categories in order
   const categories = ['heat', 'cut', 'mix', 'prepare', 'temperature', 'transform', 'finish'];
   
@@ -24,11 +42,11 @@ export const TechniquesPanel: React.FC = () => {
   }, {} as Record<string, typeof tools>);
   
   return (
-    <div className="border border-border rounded-lg p-4 bg-card">
-      <div className="mb-3">
-        <h2 className="font-bold uppercase text-sm tracking-wide">Techniques</h2>
+    <div className="border border-border rounded-2xl p-4 bg-card card-elevated">
+      <div className="mb-4">
+        <h2 className="font-bold uppercase text-sm tracking-wide">Impossible Techniques</h2>
         <p className="text-xs text-muted-foreground">
-          Ways the kitchen behaves.
+          Toggle what the kitchen can do.
         </p>
       </div>
       
@@ -40,24 +58,21 @@ export const TechniquesPanel: React.FC = () => {
             
             return (
               <div key={category}>
-                <h3 className="text-xs font-medium uppercase tracking-wider mb-2 text-muted-foreground">
+                <h3 className="text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground px-3">
                   {categoryLabels[category]}
                 </h3>
-                <div className="space-y-1">
-                  {categoryTools.slice(0, 6).map(tool => (
-                    <div 
+                <div className="space-y-0.5">
+                  {categoryTools.slice(0, 5).map(tool => (
+                    <TechniqueToggle
                       key={tool.id}
-                      className="flex items-center gap-2 text-sm py-1"
-                    >
-                      <span className="text-base">{tool.emoji}</span>
-                      <code className="text-xs text-muted-foreground">
-                        {tool.id}()
-                      </code>
-                    </div>
+                      tool={tool}
+                      isActive={activeTechniques.has(tool.id)}
+                      onToggle={(active) => toggleTechnique(tool.id, active)}
+                    />
                   ))}
-                  {categoryTools.length > 6 && (
-                    <div className="text-xs text-muted-foreground pl-6">
-                      +{categoryTools.length - 6} more
+                  {categoryTools.length > 5 && (
+                    <div className="text-[10px] text-muted-foreground pl-9 py-1">
+                      +{categoryTools.length - 5} more
                     </div>
                   )}
                 </div>

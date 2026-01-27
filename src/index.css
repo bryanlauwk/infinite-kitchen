@@ -2,11 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Function Call Kitchen - Warm Playful Design System
-   All colors are HSL. Typography: Space Mono / monospace.
+/* Function Call Kitchen - "Tactile Whimsy" Design System
+   Visual Language: Digital Playbook meets Cozy Toy Colors
+   Typography: Nunito (headers) + Space Mono (body/logs)
+   All colors are HSL.
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
 @layer base {
   :root {
@@ -161,13 +163,22 @@
   }
 
   body {
-    @apply bg-background text-foreground font-mono antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Space Mono', monospace;
   }
 
-  /* Monospace everywhere */
-  h1, h2, h3, h4, h5, h6, p, span, div, button, input, textarea, select {
+  /* Typography: Rounded sans-serif for headers, monospace for body */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+  }
+
+  p, span, div, button, input, textarea, select, code, pre {
     font-family: 'Space Mono', monospace;
+  }
+
+  .font-display {
+    font-family: 'Nunito', sans-serif;
   }
 }
 
@@ -308,9 +319,36 @@
     background: hsl(var(--muted-foreground) / 0.5);
   }
 
-  /* Summon button */
+  /* Summon button - coral/salmon with rounded corners */
   .btn-summon {
-    @apply bg-[hsl(var(--summon))] text-[hsl(var(--summon-foreground))] hover:bg-[hsl(var(--summon))]/90;
+    @apply bg-[hsl(var(--summon))] text-[hsl(var(--summon-foreground))] hover:bg-[hsl(var(--summon))]/90 rounded-xl font-semibold;
+  }
+
+  /* Card elevated - soft shadows for physical object feel */
+  .card-elevated {
+    box-shadow: 
+      0 2px 8px -2px rgba(0, 0, 0, 0.06),
+      0 4px 16px -4px rgba(0, 0, 0, 0.1),
+      0 8px 24px -8px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .card-elevated {
+    box-shadow: 
+      0 2px 8px -2px rgba(0, 0, 0, 0.2),
+      0 4px 16px -4px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Order card base with card-elevated */
+  .order-card {
+    @apply card-elevated transition-all duration-200;
+  }
+
+  .order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 4px 12px -2px rgba(0, 0, 0, 0.08),
+      0 8px 24px -4px rgba(0, 0, 0, 0.12),
+      0 12px 32px -8px rgba(0, 0, 0, 0.1);
   }
 
   /* Order card pastel backgrounds */
@@ -336,5 +374,75 @@
 
   .dark .order-card-hard {
     background: linear-gradient(135deg, hsl(0 35% 18%) 0%, hsl(0 30% 15%) 100%);
+  }
+
+  /* Grainy texture overlay for illustration areas */
+  .grainy-texture::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.25;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* Terminal/CLI style for kitchen log */
+  .terminal-bg {
+    background-color: hsl(215 28% 10%);
+    color: hsl(210 20% 90%);
+  }
+
+  .dark .terminal-bg {
+    background-color: hsl(215 30% 6%);
+    color: hsl(210 20% 85%);
+  }
+
+  .terminal-text-muted {
+    color: hsl(215 15% 50%);
+  }
+
+  .terminal-text-discovery {
+    color: hsl(160 70% 50%);
+  }
+
+  .terminal-text-error {
+    color: hsl(0 70% 60%);
+  }
+
+  /* Ingredient checkbox hover effect */
+  .ingredient-row {
+    @apply transition-all duration-150;
+  }
+
+  .ingredient-row:hover {
+    @apply bg-muted/50 rounded-lg;
+    transform: translateX(2px);
+  }
+
+  /* Agent card gradients */
+  .agent-gradient-alchemist {
+    background: linear-gradient(135deg, hsl(25 85% 94%) 0%, hsl(16 80% 90%) 100%);
+  }
+
+  .agent-gradient-transmuter {
+    background: linear-gradient(135deg, hsl(190 80% 94%) 0%, hsl(200 75% 90%) 100%);
+  }
+
+  .agent-gradient-oracle {
+    background: linear-gradient(135deg, hsl(270 75% 94%) 0%, hsl(280 70% 90%) 100%);
+  }
+
+  .dark .agent-gradient-alchemist {
+    background: linear-gradient(135deg, hsl(25 45% 18%) 0%, hsl(16 40% 14%) 100%);
+  }
+
+  .dark .agent-gradient-transmuter {
+    background: linear-gradient(135deg, hsl(190 45% 18%) 0%, hsl(200 40% 14%) 100%);
+  }
+
+  .dark .agent-gradient-oracle {
+    background: linear-gradient(135deg, hsl(270 40% 18%) 0%, hsl(280 35% 14%) 100%);
   }
 }
