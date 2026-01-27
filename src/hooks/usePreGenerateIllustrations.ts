@@ -43,24 +43,22 @@ export const usePreGenerateIllustrations = () => {
         }
       }
 
-      // 2. Pre-generate default dish illustrations
-      const dishPromises: Promise<void>[] = [];
-      for (const template of orderTemplates.slice(0, 6)) { // First 6 dishes
+      // 2. Pre-generate initial visible dishes (one from each difficulty)
+      const initialDishes = [
+        ...orderTemplates.filter(t => t.difficulty === 'beginner').slice(0, 1),
+        ...orderTemplates.filter(t => t.difficulty === 'easy').slice(0, 2),
+        ...orderTemplates.filter(t => t.difficulty === 'intermediate').slice(0, 2),
+        ...orderTemplates.filter(t => t.difficulty === 'hard').slice(0, 1),
+        ...orderTemplates.filter(t => t.difficulty === 'expert').slice(0, 1),
+        ...orderTemplates.filter(t => t.difficulty === 'legendary').slice(0, 1),
+      ];
+      
+      for (const template of initialDishes) {
         const state = getIllustration(`dish_${template.dishName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
         if (!state.url && !state.isLoading) {
-          dishPromises.push(
-            new Promise(async (resolve) => {
-              await requestIllustration(template.dishName, 'dish');
-              await new Promise(r => setTimeout(r, 500));
-              resolve();
-            })
-          );
+          await requestIllustration(template.dishName, 'dish');
+          await new Promise(r => setTimeout(r, 500));
         }
-      }
-      
-      // Process dishes in batches
-      for (const promise of dishPromises) {
-        await promise;
       }
 
       // 3. Pre-generate priority ingredients (after dishes are done)
@@ -78,6 +76,19 @@ export const usePreGenerateIllustrations = () => {
         if (!state.url && !state.isLoading) {
           requestIllustration(technique, 'technique' as any);
           await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
+      
+      // 5. Continue with more dishes in the background
+      const remainingDishes = orderTemplates.filter(
+        t => !initialDishes.includes(t)
+      ).slice(0, 20);
+      
+      for (const template of remainingDishes) {
+        const state = getIllustration(`dish_${template.dishName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
+        if (!state.url && !state.isLoading) {
+          await requestIllustration(template.dishName, 'dish');
+          await new Promise(r => setTimeout(r, 1000));
         }
       }
     };

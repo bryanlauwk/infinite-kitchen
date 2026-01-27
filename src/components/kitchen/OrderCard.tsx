@@ -11,6 +11,10 @@ interface OrderCardProps {
 }
 
 const difficultyConfig = {
+  beginner: {
+    label: 'BEGINNER',
+    className: 'bg-beginner text-beginner-foreground',
+  },
   easy: {
     label: 'EASY',
     className: 'bg-easy text-easy-foreground',
@@ -22,6 +26,14 @@ const difficultyConfig = {
   hard: {
     label: 'HARD',
     className: 'bg-hard text-hard-foreground',
+  },
+  expert: {
+    label: 'EXPERT',
+    className: 'bg-expert text-expert-foreground',
+  },
+  legendary: {
+    label: 'LEGEND',
+    className: 'bg-legendary text-legendary-foreground',
   },
 };
 
@@ -73,7 +85,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
       <div className="mt-5 mb-3">
         <DishIllustration 
           dishName={order.dishName} 
-          emoji={order.emoji}
         />
       </div>
       

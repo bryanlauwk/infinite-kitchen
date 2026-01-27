@@ -10,25 +10,21 @@ const chefProfiles: Record<AgentType, {
   title: string; 
   quirk: string; 
   gradientClass: string;
-  fallbackEmoji: string;
 }> = {
   chef: {
     title: 'The Alchemist Unit',
     quirk: 'Crafts transformation stages across arguments.',
     gradientClass: 'agent-gradient-alchemist',
-    fallbackEmoji: '🤖',
   },
   sous: {
     title: 'The Transmuter Core',
     quirk: 'Converts raw states into refined outputs.',
     gradientClass: 'agent-gradient-transmuter',
-    fallbackEmoji: '🥚',
   },
   expeditor: {
     title: 'The Oracle Module',
     quirk: 'Evaluates completion against expectations.',
     gradientClass: 'agent-gradient-oracle',
-    fallbackEmoji: '☀️',
   },
 };
 
@@ -64,7 +60,6 @@ export const ChefsSection: React.FC = () => {
                 {/* Avatar */}
                 <ChefAvatar 
                   agentType={type}
-                  fallbackEmoji={profile.fallbackEmoji}
                   isActive={isActive}
                   className="mb-4"
                 />

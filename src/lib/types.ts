@@ -44,7 +44,13 @@ export type ToolCategory =
   | 'temperature'
   | 'transform';
 
-export type OrderDifficulty = 'easy' | 'intermediate' | 'hard';
+export type OrderDifficulty = 
+  | 'beginner' 
+  | 'easy' 
+  | 'intermediate' 
+  | 'hard' 
+  | 'expert' 
+  | 'legendary';
 
 export type OrderStatus = 
   | 'not_started'

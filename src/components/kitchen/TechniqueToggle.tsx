@@ -25,7 +25,6 @@ export const TechniqueToggle: React.FC<TechniqueToggleProps> = ({
         <TechniqueIllustration
           techniqueName={tool.name}
           techniqueId={tool.id}
-          fallbackEmoji={tool.emoji}
         />
         <code className="text-xs text-muted-foreground font-mono">
           {tool.id}()

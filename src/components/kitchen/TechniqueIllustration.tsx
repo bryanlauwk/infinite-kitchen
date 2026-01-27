@@ -5,14 +5,12 @@ import { cn } from '@/lib/utils';
 interface TechniqueIllustrationProps {
   techniqueName: string;
   techniqueId: string;
-  fallbackEmoji: string;
   className?: string;
 }
 
 export const TechniqueIllustration: React.FC<TechniqueIllustrationProps> = ({
   techniqueName,
   techniqueId,
-  fallbackEmoji,
   className,
 }) => {
   const { getIllustration, requestIllustration } = useIllustrations();
@@ -48,8 +46,9 @@ export const TechniqueIllustration: React.FC<TechniqueIllustrationProps> = ({
         />
       )}
       
+      {/* Neutral placeholder - geometric shape */}
       {!illustrationState.url && !illustrationState.isLoading && (
-        <span className="text-lg">{fallbackEmoji}</span>
+        <div className="w-4 h-4 rounded bg-muted-foreground/15" />
       )}
     </div>
   );

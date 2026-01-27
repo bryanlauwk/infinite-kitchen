@@ -1,6 +1,7 @@
 import React from 'react';
 import { Ingredient } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { IngredientIllustration } from '@/components/kitchen/IngredientIllustration';
 
 interface IngredientTileProps {
   ingredient: Ingredient;
@@ -15,7 +16,7 @@ export const IngredientTile: React.FC<IngredientTileProps> = ({ ingredient, isNe
         isNew && "animate-slide-in border-gemini/30 bg-gemini/5"
       )}
     >
-      <span className="text-base opacity-60">{ingredient.emoji}</span>
+      <IngredientIllustration ingredientName={ingredient.name} />
       <span className="text-sm truncate flex-1">{ingredient.name}</span>
       {isNew && (
         <span className="w-1.5 h-1.5 rounded-full bg-gemini animate-pulse" />

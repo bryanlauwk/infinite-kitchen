@@ -87,7 +87,6 @@ export const IngredientsPanel: React.FC = () => {
                         />
                         <IngredientIllustration
                           ingredientName={ingredient.name}
-                          fallbackEmoji={ingredient.emoji}
                         />
                         <label 
                           htmlFor={`ing-${ingredient.id}-${index}`}
