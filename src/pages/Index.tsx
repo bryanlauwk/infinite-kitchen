@@ -10,6 +10,7 @@ import { TechniquesPanel } from '@/components/kitchen/TechniquesPanel';
 import { ChefsSection } from '@/components/kitchen/ChefsSection';
 import { KitchenLog } from '@/components/kitchen/KitchenLog';
 import { DishesArchive } from '@/components/kitchen/DishesArchive';
+import { Footer } from '@/components/kitchen/Footer';
 import { KitchenProvider } from '@/context/KitchenContext';
 import { AgentProvider } from '@/context/AgentContext';
 import { SoundProvider } from '@/context/SoundContext';
@@ -60,6 +61,9 @@ const KitchenContent: React.FC = () => {
       
       {/* Dishes Archive */}
       <DishesArchive />
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

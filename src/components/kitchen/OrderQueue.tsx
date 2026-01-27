@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { OrderCard } from './OrderCard';
-import { AddOrderInput } from './AddOrderInput';
 import { Button } from '@/components/ui/button';
 import { Volume2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -88,10 +87,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
             Audio Log
           </Button>
         </div>
-      </div>
-      
-      <div className="mb-4 flex-shrink-0">
-        <AddOrderInput />
       </div>
       
       <ScrollArea className="flex-1 min-h-0">
