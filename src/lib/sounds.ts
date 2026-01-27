@@ -94,6 +94,14 @@ export const techniqueSounds: Record<string, string> = {
   mix_salad: "salad tongs gently mixing greens and fruits in bowl",
   layer: "ingredients being carefully layered, soft placement sounds",
   
+  // ===== GENERIC PREP =====
+  cut: "knife cutting through food on cutting board",
+  prep: "general food preparation sounds, gentle kitchen work",
+  prepare: "quiet preparation, gathering ingredients",
+  portion: "dividing food into portions, careful cutting",
+  separate: "gently separating components, soft pulling apart",
+  extract: "extracting component from food, careful separation",
+  
   // ===== PREPARATION TECHNIQUES =====
   marinate: "liquid marinade pouring over meat in dish, splashing",
   season: "salt and pepper shaker sprinkling, fine granules hitting food",

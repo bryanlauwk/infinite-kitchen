@@ -25,29 +25,36 @@ serve(async (req) => {
 
     const systemPrompt = `You are an alchemy agent that determines what happens when cooking actions are performed on ingredients.
 
-You must respond with a JSON object describing the result AND classify whether this result reveals a new base ingredient.
+You must respond with a JSON object describing the result AND classify whether this result reveals a new BASE ingredient.
 
-A result is a DISCOVERY (isDiscovery: true) only if it:
-- Reveals a previously hidden component (egg → egg yolk, egg white)
-- Extracts a new base ingredient (clarify butter → ghee)
-- Separates into fundamental components (zest lemon → lemon zest)
+IMPORTANT: isDiscovery should be TRUE only in RARE cases:
+- Separating an egg reveals egg yolk and egg white (hidden components)
+- Clarifying butter produces ghee (extracted pure ingredient)
+- Zesting a lemon produces lemon zest (separated component)
+- Cracking a coconut reveals coconut water and coconut meat
+- Rendering fat from bacon produces rendered bacon fat
 
-A result is NOT a discovery (isDiscovery: false) if it:
-- Is an intermediate cooking step (seared beef, whisked eggs)
-- Is a prepared dish (scrambled eggs, avocado toast, fruit salad)
-- Is a transformed combination (mixed vegetables, salad)
+isDiscovery should be FALSE for (almost everything):
+- Any cooked result (scrambled eggs, grilled chicken, sautéed vegetables)
+- Any mixed result (fruit salad, mixed greens, combined ingredients)
+- Any transformed dish (toast, soup, sauce, puree, salad)
+- Any intermediate cooking step (whisked eggs, seared beef, chopped onions)
+- Opening/cracking items (cracked egg is still egg, not a discovery)
+
+Most actions result in isDiscovery: false. Only true component extraction/separation = discovery.
 
 Be creative but realistic. Consider:
 - What would actually happen when you ${action} these ingredients?
 - What is the resulting food item called?
 - Pick an appropriate emoji that represents the result
-- Give a brief poetic description
+- Give a brief poetic description (under 10 words)
 
 Examples:
-- crack([🥚 egg]) → {resultName: "Raw Egg", isDiscovery: false} - opening shell
-- separate([🥚 raw egg]) → {resultName: "Egg Yolk", isDiscovery: true} - reveals component
-- clarify([🧈 butter]) → {resultName: "Ghee", isDiscovery: true} - extracts new ingredient
-- pan_fry([🍳 egg_mixture]) → {resultName: "Scrambled Eggs", isDiscovery: false} - cooking step
+- crack([🥚 egg]) → {resultName: "Raw Egg", isDiscovery: false} - just opened the shell
+- separate([🥚 raw egg]) → {resultName: "Egg Yolk", isDiscovery: true} - reveals hidden component
+- clarify([🧈 butter]) → {resultName: "Ghee", isDiscovery: true} - extracts pure ingredient
+- whisk([🥚 raw egg]) → {resultName: "Whisked Egg", isDiscovery: false} - cooking step
+- pan_fry([🍳 whisked egg]) → {resultName: "Scrambled Eggs", isDiscovery: false} - cooking step
 - toss([🍎 fruit]) → {resultName: "Fruit Salad", isDiscovery: false} - combined dish`;
 
     const userPrompt = `Action: ${action}
@@ -94,7 +101,7 @@ What is the result?`;
                   },
                   isDiscovery: {
                     type: "boolean",
-                    description: "True only if this reveals a new base ingredient component (like separating egg into yolk/white, or clarifying butter into ghee). False for cooking steps, intermediate results, and dishes."
+                    description: "Almost always FALSE. Only TRUE when revealing hidden sub-components (like separating egg → yolk/white, or clarifying butter → ghee). FALSE for all cooking steps, dishes, combinations, and transformations."
                   }
                 },
                 required: ["resultName", "resultId", "emoji", "description", "isDiscovery"]

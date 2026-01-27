@@ -12,15 +12,13 @@ export const IngredientTile: React.FC<IngredientTileProps> = ({ ingredient, isNe
     <div 
       className={cn(
         "tile flex items-center gap-2 py-2",
-        isNew && "animate-slide-in border-gemini bg-gemini/5"
+        isNew && "animate-slide-in border-gemini/30 bg-gemini/5"
       )}
     >
       <span className="text-base opacity-60">{ingredient.emoji}</span>
       <span className="text-sm truncate flex-1">{ingredient.name}</span>
       {isNew && (
-        <span className="text-[10px] font-medium text-gemini uppercase tracking-wider">
-          NEW
-        </span>
+        <span className="w-1.5 h-1.5 rounded-full bg-gemini animate-pulse" />
       )}
     </div>
   );
