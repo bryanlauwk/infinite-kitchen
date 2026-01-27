@@ -33,9 +33,11 @@ const KitchenContent: React.FC = () => {
       
       {/* Main Three-Column Layout */}
       <div className="px-6 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_240px] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4" style={{ minHeight: '600px' }}>
           {/* Left Column - Ingredients */}
-          <IngredientsPanel />
+          <div className="lg:h-[600px]">
+            <IngredientsPanel />
+          </div>
           
           {/* Center Column - Orders */}
           <OrderQueue 
@@ -44,7 +46,9 @@ const KitchenContent: React.FC = () => {
           />
           
           {/* Right Column - Techniques */}
-          <TechniquesPanel />
+          <div className="lg:h-[600px]">
+            <TechniquesPanel />
+          </div>
         </div>
       </div>
 

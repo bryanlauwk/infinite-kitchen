@@ -42,15 +42,15 @@ export const TechniquesPanel: React.FC = () => {
   }, {} as Record<string, typeof tools>);
   
   return (
-    <div className="border border-border rounded-2xl p-4 bg-card card-elevated">
-      <div className="mb-4">
+    <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
+      <div className="mb-3 flex-shrink-0">
         <h2 className="font-bold uppercase text-sm tracking-wide">Impossible Techniques</h2>
         <p className="text-xs text-muted-foreground">
           Toggle what the kitchen can do.
         </p>
       </div>
       
-      <ScrollArea className="h-[320px]">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-4 pr-2">
           {categories.map(category => {
             const categoryTools = groupedTools[category];
@@ -62,7 +62,7 @@ export const TechniquesPanel: React.FC = () => {
                   {categoryLabels[category]}
                 </h3>
                 <div className="space-y-0.5">
-                  {categoryTools.slice(0, 5).map(tool => (
+                  {categoryTools.map(tool => (
                     <TechniqueToggle
                       key={tool.id}
                       tool={tool}
@@ -70,11 +70,6 @@ export const TechniquesPanel: React.FC = () => {
                       onToggle={(active) => toggleTechnique(tool.id, active)}
                     />
                   ))}
-                  {categoryTools.length > 5 && (
-                    <div className="text-[10px] text-muted-foreground pl-9 py-1">
-                      +{categoryTools.length - 5} more
-                    </div>
-                  )}
                 </div>
               </div>
             );

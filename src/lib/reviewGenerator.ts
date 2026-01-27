@@ -107,3 +107,54 @@ export function generateReview(): CustomerReview {
 export function renderStars(stars: number): string {
   return '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
+
+// Customer avatar pool - whimsical, surreal customer personas
+const customerAvatars = [
+  { name: 'The Void', color: 'hsl(270 60% 50%)' },
+  { name: 'Wanderer', color: 'hsl(200 70% 50%)' },
+  { name: 'Cloud Nine', color: 'hsl(180 60% 55%)' },
+  { name: 'Stardust', color: 'hsl(45 90% 55%)' },
+  { name: 'Whisper', color: 'hsl(320 50% 55%)' },
+  { name: 'Echo', color: 'hsl(160 60% 45%)' },
+  { name: 'Drift', color: 'hsl(220 65% 55%)' },
+  { name: 'Ember', color: 'hsl(15 80% 55%)' },
+  { name: 'Mist', color: 'hsl(190 40% 60%)' },
+  { name: 'Ripple', color: 'hsl(240 55% 60%)' },
+  { name: 'Glimmer', color: 'hsl(50 85% 50%)' },
+  { name: 'Breeze', color: 'hsl(170 55% 50%)' },
+  { name: 'Shadow', color: 'hsl(260 30% 40%)' },
+  { name: 'Spark', color: 'hsl(35 90% 55%)' },
+  { name: 'Haze', color: 'hsl(280 45% 55%)' },
+  { name: 'Flicker', color: 'hsl(25 75% 55%)' },
+];
+
+export interface CustomerAvatar {
+  name: string;
+  color: string;
+  initials: string;
+}
+
+export function getRandomCustomerAvatar(): CustomerAvatar {
+  const avatar = customerAvatars[Math.floor(Math.random() * customerAvatars.length)];
+  return {
+    ...avatar,
+    initials: avatar.name.substring(0, 2).toUpperCase(),
+  };
+}
+
+// Seeded random for consistent avatar per dish
+export function getCustomerAvatarForDish(dishId: string): CustomerAvatar {
+  // Simple hash from dish ID
+  let hash = 0;
+  for (let i = 0; i < dishId.length; i++) {
+    const char = dishId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  const index = Math.abs(hash) % customerAvatars.length;
+  const avatar = customerAvatars[index];
+  return {
+    ...avatar,
+    initials: avatar.name.substring(0, 2).toUpperCase(),
+  };
+}

@@ -47,15 +47,15 @@ export const IngredientsPanel: React.FC = () => {
   }, [inventory]);
   
   return (
-    <div className="border border-border rounded-2xl p-4 bg-card card-elevated">
-      <div className="mb-4">
+    <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
+      <div className="mb-3 flex-shrink-0">
         <h2 className="font-bold uppercase text-sm tracking-wide">Ingredients</h2>
         <p className="text-xs text-muted-foreground">
           What the kitchen knows.
         </p>
       </div>
       
-      <ScrollArea className="h-[320px]">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-4 pr-2">
           {groupOrder.map(group => {
             const ingredients = groupedIngredients[group];
