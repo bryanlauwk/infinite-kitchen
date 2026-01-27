@@ -18,7 +18,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
         <div className="mb-3">
           <h2 className="font-bold uppercase text-sm tracking-wide">Orders</h2>
           <p className="text-xs text-muted-foreground">
-            Order any dish — the kitchen figures out the rest
+            Tell the kitchen what you want.
           </p>
         </div>
         

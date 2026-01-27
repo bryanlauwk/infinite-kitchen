@@ -63,12 +63,18 @@ export interface Order {
   timestamp: number;
   servedDish?: string;
   judgeResult?: JudgeResult;
+  review?: CustomerReview;
 }
 
 export interface JudgeResult {
   match: boolean;
   confidence: number;
   reasoning: string;
+}
+
+export interface CustomerReview {
+  stars: 1 | 2 | 3 | 4 | 5;
+  comment: string;
 }
 
 export type AgentType = 'chef' | 'sous' | 'expeditor';
