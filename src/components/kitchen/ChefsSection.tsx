@@ -4,26 +4,31 @@ import { AgentType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
+import { ChefAvatar } from './ChefAvatar';
 
 const chefProfiles: Record<AgentType, { 
   title: string; 
   quirk: string; 
   gradientClass: string;
+  fallbackEmoji: string;
 }> = {
   chef: {
     title: 'The Alchemist Unit',
     quirk: 'Crafts transformation stages across arguments.',
     gradientClass: 'agent-gradient-alchemist',
+    fallbackEmoji: '🤖',
   },
   sous: {
     title: 'The Transmuter Core',
     quirk: 'Converts raw states into refined outputs.',
     gradientClass: 'agent-gradient-transmuter',
+    fallbackEmoji: '🥚',
   },
   expeditor: {
     title: 'The Oracle Module',
     quirk: 'Evaluates completion against expectations.',
     gradientClass: 'agent-gradient-oracle',
+    fallbackEmoji: '☀️',
   },
 };
 
@@ -57,12 +62,12 @@ export const ChefsSection: React.FC = () => {
                 )}
               >
                 {/* Avatar */}
-                <div className={cn(
-                  "w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4 bg-background/50 backdrop-blur-sm border border-border/50",
-                  isActive && "animate-pulse"
-                )}>
-                  {agent.emoji}
-                </div>
+                <ChefAvatar 
+                  agentType={type}
+                  fallbackEmoji={profile.fallbackEmoji}
+                  isActive={isActive}
+                  className="mb-4"
+                />
                 
                 {/* Title & Description */}
                 <h3 className="font-bold text-sm mb-1">{profile.title}</h3>
