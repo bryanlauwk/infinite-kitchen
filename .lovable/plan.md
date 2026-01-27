@@ -1,268 +1,221 @@
 
 
-# Tactile Whimsy Illustration Style Transformation
+# AI-Generated "Vector-Stylized Surrealism" Illustrations Plan
 
 ## Overview
 
-Transform the Infinite Kitchen UI to match the reference image's playful "Digital Playbook" aesthetic with vector-stylized surreal food illustrations, soft gradients, and a developer-tool parody aesthetic.
+Replace the current emoji + gradient system with AI-generated playful vector-style illustrations for all food/dish graphics and chef avatars. The illustrations will use the **Nano banana model** (`google/gemini-2.5-flash-image`) to generate stylized, whimsical food art matching the reference image aesthetic.
 
 ---
 
-## Part 1: Visual Design System Updates
+## Design Approach: "Vector-Stylized Surrealism"
 
-### 1.1 Typography Enhancement
-
-Add a rounded sans-serif font for headers alongside the monospace for that "game-y" feel:
-
-**index.css changes:**
-- Import Inter or Nunito for rounded headers
-- Keep Space Mono for logs, code, and function names
-- Headers get thick, rounded sans-serif
-- Body/logs stay monospace
-
-```css
-/* Typography mix */
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap');
-
-h1, h2, h3 { font-family: 'Nunito', sans-serif; font-weight: 800; }
-code, .font-mono, .kitchen-log { font-family: 'Space Mono', monospace; }
-```
-
-### 1.2 Enhanced Card Shadows
-
-Add soft, warm shadows to all cards for that "physical objects on flat surface" look:
-
-```css
-.card-elevated {
-  box-shadow: 
-    0 2px 8px -2px rgba(0, 0, 0, 0.08),
-    0 4px 16px -4px rgba(0, 0, 0, 0.12);
-}
-```
-
-### 1.3 Ingredient Checkbox Style
-
-Transform ingredient list to use playful checkbox toggles like the reference:
-
-- Custom styled checkboxes with rounded squares
-- Ingredient icons have a subtle grainy gradient effect
-- Hover states with gentle scale/glow
+Based on the reference image, the illustration style features:
+- **Soft gradients with rounded shapes** (not realistic photos)
+- **Playful, cartoon-like food** with exaggerated features
+- **Surreal elements** (octopus soup, cosmic pasta swirls)
+- **Pastel color backgrounds** matching dish categories
+- **Consistent art style** across all illustrations
 
 ---
 
-## Part 2: Order Cards - "Tactile Whimsy" Style
+## Part 1: Image Generation Edge Function
 
-### 2.1 SVG Dish Illustrations Component
+### 1.1 Create `generate-illustration` Edge Function
 
-Create a `DishIllustration` component that generates stylized food illustrations:
+A new edge function that generates illustrations on-demand:
 
-**New file: `src/components/kitchen/DishIllustration.tsx`**
+```typescript
+// supabase/functions/generate-illustration/index.ts
 
-Each dish gets a unique SVG illustration with:
-- Soft gradient backgrounds (pastel colors based on dish type)
-- Stylized vector food shapes
-- Grainy texture overlay for that "juicy" 3D effect
-- Surreal cosmic elements for special dishes
+// Uses Nano banana model (google/gemini-2.5-flash-image)
+// Generates vector-style food illustrations based on dish name
+
+const prompt = `Create a playful, vector-stylized illustration of ${dishName}.
+
+Style requirements:
+- Cartoon/vector art style, NOT realistic
+- Soft gradients and rounded shapes
+- Playful and whimsical, slightly surreal
+- Clean white or light pastel background
+- Single centered food item
+- No text, no labels
+- Reminiscent of neal.fun or indie web game aesthetic
+- Think "squishy", "juicy" icons from early 2010s app design`;
+```
+
+### 1.2 Prompt Engineering for Consistency
+
+Different prompts for different illustration types:
+
+**Dish Illustrations:**
+```text
+"A cute vector illustration of [dish name] on a light [color] gradient background. 
+Playful cartoon style with soft shadows. No text. Single centered dish. 
+Think whimsical food app icon."
+```
+
+**Chef Avatars:**
+```text
+"A playful cartoon robot chef character. Cute vector art style with soft gradients. 
+[Specific traits: orange for Alchemist, blue for Transmuter, purple for Oracle].
+Friendly face, simple geometric shapes. Think indie game mascot."
+```
+
+---
+
+## Part 2: Illustration Storage & Caching
+
+### 2.1 Database Table for Illustration Cache
+
+Create a table to cache generated illustrations (avoid regenerating):
+
+```sql
+CREATE TABLE generated_illustrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  prompt_key TEXT UNIQUE NOT NULL,  -- Hash of dish name + type
+  image_url TEXT NOT NULL,           -- Stored image URL or base64
+  dish_name TEXT,
+  illustration_type TEXT,            -- 'dish' or 'chef'
+  created_at TIMESTAMP DEFAULT now()
+);
+```
+
+### 2.2 Storage Bucket for Images
+
+Create a public storage bucket `illustrations` to store generated images permanently (instead of passing base64 around).
+
+---
+
+## Part 3: Updated Components
+
+### 3.1 New `DishIllustration.tsx`
+
+Replace the current gradient + emoji approach with AI-generated images:
 
 ```tsx
-// Example: generates appropriate illustration based on dish name/emoji
-const DishIllustration = ({ dishName, emoji }: Props) => {
-  const bgGradient = getDishGradient(dishName);
+interface DishIllustrationProps {
+  dishName: string;
+  orderId?: string;
+  className?: string;
+}
+
+export const DishIllustration: React.FC<DishIllustrationProps> = ({ 
+  dishName,
+  orderId,
+  className = ''
+}) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchIllustration() {
+      // 1. Check cache first
+      // 2. If not cached, call generate-illustration edge function
+      // 3. Store result in cache and display
+    }
+    fetchIllustration();
+  }, [dishName]);
   
   return (
-    <div className="dish-illustration" style={{ background: bgGradient }}>
-      {/* SVG food illustration based on dish type */}
-      <FoodSvg type={inferFoodType(dishName)} />
-      {/* Optional cosmic overlay for special dishes */}
+    <div className={`relative w-full h-20 rounded-xl overflow-hidden ${className}`}>
+      {isLoading ? (
+        // Gradient placeholder while loading
+        <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 animate-pulse" />
+      ) : (
+        <img 
+          src={imageUrl} 
+          alt={dishName}
+          className="w-full h-full object-cover"
+        />
+      )}
     </div>
   );
 };
 ```
 
-### 2.2 Order Card Visual Redesign
+### 3.2 Chef Avatar Illustrations
 
-**Update `OrderCard.tsx`:**
+Update `ChefsSection.tsx` to use generated chef avatars:
 
-- Replace emoji-only display with full illustration card
-- Illustration area: 120x80px with rounded corners
-- Grainy gradient background matching dish category
-- Difficulty badge stays in top-left corner
-- "Not started" status text below dish name
-- Coral "Summon" button with rounded corners
-
-```text
-+---------------------------+
-| [EASY]                    |
-|  +---------------------+  |
-|  |   🍝               |  |  <- Illustration area with gradient bg
-|  |  [pasta shapes]     |  |
-|  +---------------------+  |
-|    Cosmic Carbonara       |
-|    Not started            |
-|  [====== Summon ======]   |
-+---------------------------+
-```
-
-### 2.3 Dish Category Color Mapping
-
-Create a color palette for different dish types:
-
-```typescript
-const dishGradients = {
-  pasta: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', // warm yellow
-  salad: 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)', // fresh green
-  meat: 'linear-gradient(135deg, #FECACA 0%, #FCA5A5 100%)',  // warm red
-  seafood: 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)', // ocean blue
-  dessert: 'linear-gradient(135deg, #FCE7F3 0%, #FBCFE8 100%)', // pink
-  cosmic: 'linear-gradient(135deg, #C4B5FD 0%, #A78BFA 100%)', // purple
+```tsx
+const chefProfiles: Record<AgentType, { 
+  title: string; 
+  quirk: string; 
+  illustrationPrompt: string;
+  fallbackEmoji: string;
+}> = {
+  chef: {
+    title: 'The Alchemist Unit',
+    quirk: 'Crafts transformation stages across arguments.',
+    illustrationPrompt: 'cute robot chef with orange and coral colors',
+    fallbackEmoji: '🤖',
+  },
+  sous: {
+    title: 'The Skiers Conf',  // Per reference image
+    quirk: 'Erstfts t uodifir ante tnqutrks.',  // Gibberish per reference
+    illustrationPrompt: 'friendly egg-shaped chef creature in warm tones',
+    fallbackEmoji: '🥚',
+  },
+  expeditor: {
+    title: 'Nexus Noodle Weaver',  // Per reference image
+    quirk: 'Vostfrs lrus Newle abrore actians.',
+    illustrationPrompt: 'glowing sun-like chef orb in yellow and orange',
+    fallbackEmoji: '☀️',
+  },
 };
 ```
 
----
+### 3.3 Illustration Provider Context
 
-## Part 3: Techniques Panel - Toggle/Slider Style
-
-### 3.1 Technique Toggle Component
-
-**New file: `src/components/kitchen/TechniqueToggle.tsx`**
-
-Transform techniques list into a settings-panel style with toggles:
+Create a context to manage illustration loading/caching state across the app:
 
 ```tsx
-const TechniqueToggle = ({ tool, isActive }: Props) => (
-  <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
-    <div className="flex items-center gap-2">
-      <span className="text-lg">{tool.emoji}</span>
-      <code className="text-xs text-muted-foreground">{tool.id}()</code>
-    </div>
-    <Switch checked={isActive} className="scale-75" />
-  </div>
-);
-```
+// src/context/IllustrationContext.tsx
 
-### 3.2 Update TechniquesPanel
-
-**Modify `TechniquesPanel.tsx`:**
-
-- Header: "IMPOSSIBLE TECHNIQUES" (per reference)
-- Replace list with toggle switches
-- Visual indicator when technique is "available" vs "locked"
-- Subtle hover animations
-
----
-
-## Part 4: Kitchen Log - Terminal CLI Style
-
-### 4.1 Dark Terminal Background
-
-**Modify `KitchenLog.tsx`:**
-
-Transform to classic CLI aesthetic:
-- Dark background (near-black or dark slate)
-- Light/green monospace text
-- "count: ????" indicator in header corner
-- Prompt-style prefixes for entries (> or $)
-
-```tsx
-<section className="px-6 py-4">
-  <div className="rounded-lg overflow-hidden border border-border">
-    {/* Header with count */}
-    <div className="flex justify-between items-center px-4 py-2 bg-muted border-b border-border">
-      <h2 className="font-bold uppercase text-sm tracking-wide">Kitchen Log</h2>
-      <span className="text-xs text-muted-foreground font-mono">count: {timeline.length}</span>
-    </div>
-    
-    {/* Terminal body */}
-    <div className="bg-slate-900 p-4 font-mono text-sm text-slate-100">
-      {timeline.map(event => (
-        <p className="leading-relaxed">
-          <span className="text-slate-500">&gt;</span> {formatLogEntry(event)}
-        </p>
-      ))}
-    </div>
-  </div>
-</section>
+interface IllustrationContextType {
+  getIllustration: (key: string, type: 'dish' | 'chef') => string | null;
+  requestIllustration: (key: string, type: 'dish' | 'chef', prompt: string) => Promise<string>;
+  isLoading: (key: string) => boolean;
+}
 ```
 
 ---
 
-## Part 5: Chefs Section Enhancement
+## Part 4: Pre-generation Strategy
 
-### 5.1 Agent Card Redesign
+### 4.1 Pre-generate Default Order Illustrations
 
-**Modify `ChefsSection.tsx`:**
+When the app initializes, pre-generate illustrations for the default order templates:
 
-Match reference style with:
-- Larger, more playful avatar illustrations (emoji-based but styled)
-- Quirky titles with observational descriptions
-- "Observe" / "Open" / "Upgrade" styled action buttons
-
-```text
-+---------------------------------------+
-|  [Avatar]                             |
-|                                       |
-|  The Alchemist Unit                   |
-|  Crafts transformation stages         |
-|  across arguments.                    |
-|                                       |
-|  [Q Observe]                          |
-+---------------------------------------+
+```typescript
+// In KitchenContext initialization
+const defaultDishes = orderTemplates.map(t => t.dishName);
+// Batch request illustrations for all default dishes
 ```
 
-### 5.2 Agent Avatar Component
+### 4.2 Lazy Generation for Custom Orders
 
-**New file: `src/components/kitchen/AgentAvatar.tsx`**
-
-Styled avatars with soft gradients matching agent type:
-- Chef (Alchemist): Warm orange/coral gradient
-- Sous (Transmuter): Cool blue/teal gradient
-- Expeditor (Oracle): Purple/indigo gradient
+When a user adds a custom order, generate the illustration in the background:
+1. Show gradient placeholder immediately
+2. Start generation request
+3. Fade in the generated illustration when ready
 
 ---
 
-## Part 6: Ingredients Panel - Checkbox List Style
+## Part 5: Fallback Strategy
 
-### 6.1 Ingredient Item Redesign
+### 5.1 Progressive Enhancement
 
-**Modify `IngredientsPanel.tsx`:**
+If illustration generation fails:
+1. **First fallback**: Use the current gradient + emoji system
+2. **Visual indicator**: Subtle shimmer effect to show "illustration pending"
 
-- Each ingredient as a checkbox row (matching reference)
-- Custom styled checkbox component
-- Playful hover effects
-- Subtle gradient backgrounds on selected items
+### 5.2 Rate Limiting Handling
 
-```tsx
-<div className="flex items-center gap-3 py-1.5">
-  <Checkbox id={ingredient.id} className="rounded" />
-  <label className="flex items-center gap-2 text-sm cursor-pointer">
-    <span className="text-base">{ingredient.emoji}</span>
-    <span>{ingredient.name}</span>
-  </label>
-</div>
-```
-
----
-
-## Part 7: Audio Log Button
-
-### 7.1 Add "Audio Log" Button to Orders Header
-
-**Modify `OrderQueue.tsx`:**
-
-Add an audio/sound indicator button matching reference:
-
-```tsx
-<div className="flex justify-between items-center mb-4">
-  <div>
-    <h2>THE ORDERS OF THE UNIVERSE</h2>
-    <p>Try Factilee Fanefilie θgent.</p>
-  </div>
-  <Button variant="outline" size="sm" className="gap-2">
-    <Volume2 className="h-4 w-4" />
-    Audio Log
-  </Button>
-</div>
-```
+- Queue illustration requests
+- Maximum 3 concurrent generations
+- Exponential backoff on 429 errors
 
 ---
 
@@ -270,53 +223,108 @@ Add an audio/sound indicator button matching reference:
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/index.css` | Modify | Add rounded font, enhanced shadows, checkbox styles |
-| `src/components/kitchen/DishIllustration.tsx` | Create | SVG food illustrations with gradients |
-| `src/components/kitchen/OrderCard.tsx` | Modify | Add illustration area, status text, styled badge |
-| `src/components/kitchen/TechniqueToggle.tsx` | Create | Toggle switch component for techniques |
-| `src/components/kitchen/TechniquesPanel.tsx` | Modify | Use toggle switches, update header |
-| `src/components/kitchen/KitchenLog.tsx` | Modify | Dark terminal style, count indicator |
-| `src/components/kitchen/AgentCard.tsx` | Create | Styled agent cards with gradients |
-| `src/components/kitchen/ChefsSection.tsx` | Modify | Use new AgentCard, observational microcopy |
-| `src/components/kitchen/IngredientsPanel.tsx` | Modify | Checkbox list style |
-| `src/components/kitchen/OrderQueue.tsx` | Modify | Add Audio Log button |
-| `src/lib/dishColors.ts` | Create | Dish category to gradient color mapping |
+| `supabase/functions/generate-illustration/index.ts` | Create | Edge function for AI image generation |
+| `src/lib/api.ts` | Modify | Add `generateIllustration()` function |
+| `src/lib/types.ts` | Modify | Add `illustrationUrl?: string` to Order type |
+| `src/context/IllustrationContext.tsx` | Create | Manage illustration state/cache |
+| `src/components/kitchen/DishIllustration.tsx` | Modify | Use AI-generated images |
+| `src/components/kitchen/ChefAvatar.tsx` | Create | Dedicated chef illustration component |
+| `src/components/kitchen/ChefsSection.tsx` | Modify | Use ChefAvatar component |
+| `src/data/orders.ts` | Modify | Add illustration prompts to order templates |
 
 ---
 
-## Visual Reference Implementation
+## Database Changes
 
-### Dish Illustration Logic
+Create a caching table for generated illustrations:
 
-Infer dish type from name keywords:
+```sql
+CREATE TABLE generated_illustrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  prompt_key TEXT UNIQUE NOT NULL,
+  image_url TEXT NOT NULL,
+  dish_name TEXT,
+  illustration_type TEXT CHECK (illustration_type IN ('dish', 'chef')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-```typescript
-function inferDishCategory(dishName: string): DishCategory {
-  const name = dishName.toLowerCase();
-  if (/pasta|carbonara|spaghetti|noodle|ramen/.test(name)) return 'pasta';
-  if (/salad|greens|lettuce/.test(name)) return 'salad';
-  if (/beef|steak|meat|pork|chicken/.test(name)) return 'meat';
-  if (/fish|shrimp|lobster|crab|sushi/.test(name)) return 'seafood';
-  if (/cake|pie|brulee|souffle|dessert|chocolate/.test(name)) return 'dessert';
-  if (/cosmic|quantum|nebula|void|infinity/.test(name)) return 'cosmic';
-  return 'default';
-}
+-- Enable RLS (public read, restricted write via service role)
+ALTER TABLE generated_illustrations ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read illustrations
+CREATE POLICY "Public read access" ON generated_illustrations
+  FOR SELECT USING (true);
+
+-- Only service role can insert (edge function)
+CREATE POLICY "Service role insert" ON generated_illustrations
+  FOR INSERT WITH CHECK (true);
 ```
 
-### Grainy Texture Overlay
+---
 
-Add CSS noise texture for that 3D "juicy" effect:
+## Edge Function Implementation
 
-```css
-.grainy-texture::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,..."); /* noise pattern */
-  opacity: 0.3;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
+### generate-illustration/index.ts
+
+```typescript
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+serve(async (req) => {
+  const { dishName, type, promptKey } = await req.json();
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  // Check cache first
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+  
+  const { data: cached } = await supabase
+    .from('generated_illustrations')
+    .select('image_url')
+    .eq('prompt_key', promptKey)
+    .single();
+    
+  if (cached) {
+    return new Response(JSON.stringify({ imageUrl: cached.image_url }));
+  }
+  
+  // Generate new illustration
+  const prompt = type === 'dish' 
+    ? `A playful vector illustration of ${dishName}. Cute cartoon style with soft gradients...`
+    : `A whimsical robot chef character...`;
+    
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content: prompt }],
+      modalities: ["image", "text"]
+    }),
+  });
+  
+  const data = await response.json();
+  const imageBase64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  
+  // Upload to storage bucket
+  const fileName = `${promptKey}.png`;
+  // ... upload logic ...
+  
+  // Cache in database
+  await supabase.from('generated_illustrations').insert({
+    prompt_key: promptKey,
+    image_url: publicUrl,
+    dish_name: dishName,
+    illustration_type: type
+  });
+  
+  return new Response(JSON.stringify({ imageUrl: publicUrl }));
+});
 ```
 
 ---
@@ -324,27 +332,30 @@ Add CSS noise texture for that 3D "juicy" effect:
 ## Expected Results
 
 After implementation:
-1. **Typography**: Mixed rounded sans-serif headers with monospace body text
-2. **Order Cards**: Feature stylized gradient illustrations instead of plain emoji
-3. **Techniques**: Toggle switches in a settings-panel style
-4. **Kitchen Log**: Dark terminal aesthetic with entry count
-5. **Chefs**: Gradient-styled avatar cards with quirky descriptions
-6. **Ingredients**: Checkbox list with playful hover states
-7. **Overall**: A "Professional Tool for an Impossible Task" vibe
+
+1. **Order Cards** display AI-generated vector-style food illustrations matching the reference image aesthetic
+2. **Chef Avatars** are playful robot/creature characters instead of emoji
+3. **Illustrations are cached** in the database to avoid regeneration costs
+4. **Graceful fallbacks** ensure the app works even if generation fails
+5. **Consistent art style** across all generated images through careful prompt engineering
 
 ---
 
-## Technical Notes
+## Technical Considerations
 
-### SVG Illustrations
-Rather than embedding actual food images, the illustrations will be:
-- Procedurally styled based on dish category
-- Gradient backgrounds with emoji overlay
-- CSS-based grainy texture for depth
-- This keeps bundle size small while maintaining the whimsical aesthetic
+### Image Size Management
+- Generated images can be large (base64)
+- Upload to storage bucket immediately
+- Store only public URLs in the database
+- This prevents passing large payloads to the frontend
 
-### Performance
-- All illustrations use CSS gradients (no image loads)
-- Grainy texture is a single reused SVG data URL
-- Toggle switches use existing Radix Switch component
+### Generation Time
+- AI image generation takes 3-10 seconds
+- Show loading placeholder with gradient animation
+- Pre-generate common dishes on first load
+
+### Cost Efficiency
+- Cache all generated images
+- Hash dish names to create unique prompt keys
+- Avoid regenerating for identical prompts
 
