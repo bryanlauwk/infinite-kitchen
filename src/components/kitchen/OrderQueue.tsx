@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { OrderCard } from './OrderCard';
-import { Button } from '@/components/ui/button';
-import { Volume2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { OrderDifficulty } from '@/lib/types';
 import {
@@ -82,10 +80,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="gap-2 text-xs rounded-xl h-8">
-            <Volume2 className="h-3.5 w-3.5" />
-            Audio Log
-          </Button>
         </div>
       </div>
       
