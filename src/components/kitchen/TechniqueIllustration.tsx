@@ -16,15 +16,17 @@ export const TechniqueIllustration: React.FC<TechniqueIllustrationProps> = ({
   const { getIllustration, requestIllustration } = useIllustrations();
   const [hasRequested, setHasRequested] = useState(false);
   
+  // Use techniqueId for consistent key generation (no special characters)
   const promptKey = `technique_${techniqueId}`;
   const illustrationState = getIllustration(promptKey);
 
   useEffect(() => {
     if (!hasRequested && !illustrationState.url && !illustrationState.isLoading) {
       setHasRequested(true);
-      requestIllustration(techniqueName, 'technique' as any);
+      // Pass techniqueId as the name for consistent key generation
+      requestIllustration(techniqueId, 'technique', techniqueName);
     }
-  }, [techniqueName, hasRequested, illustrationState, requestIllustration]);
+  }, [techniqueId, techniqueName, hasRequested, illustrationState, requestIllustration]);
 
   return (
     <div 
@@ -35,7 +37,7 @@ export const TechniqueIllustration: React.FC<TechniqueIllustrationProps> = ({
       )}
     >
       {illustrationState.isLoading && (
-        <div className="w-full h-full shimmer bg-gradient-to-br from-muted to-muted/50" />
+        <div className="w-full h-full animate-pulse bg-muted" />
       )}
       
       {illustrationState.url && !illustrationState.isLoading && (
@@ -43,6 +45,7 @@ export const TechniqueIllustration: React.FC<TechniqueIllustrationProps> = ({
           src={illustrationState.url}
           alt={techniqueName}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       )}
       
