@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { useCookingLoop } from '@/hooks/useCookingLoop';
+import { usePreGenerateIllustrations } from '@/hooks/usePreGenerateIllustrations';
 import { Header } from '@/components/kitchen/Header';
 import { HeroBanner } from '@/components/kitchen/HeroBanner';
 import { OrderQueue } from '@/components/kitchen/OrderQueue';
@@ -17,6 +18,9 @@ import { IllustrationProvider } from '@/context/IllustrationContext';
 const KitchenContent: React.FC = () => {
   const { orders } = useKitchen();
   const { runCookingLoop, isCooking } = useCookingLoop();
+  
+  // Start pre-generating illustrations on mount
+  usePreGenerateIllustrations();
 
   const handleStartOrder = useCallback((orderId: string) => {
     runCookingLoop(orderId);
