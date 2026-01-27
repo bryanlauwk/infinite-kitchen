@@ -9,10 +9,18 @@ interface ChefAvatarProps {
   className?: string;
 }
 
+// Unique identifiers for each chef that will be used as prompt keys
+const agentKeys: Record<string, string> = {
+  chef: 'alchemist_robot_chef',
+  sous: 'transmuter_octopus_creature', 
+  expeditor: 'oracle_sun_orb',
+};
+
+// Detailed prompts for generating each chef avatar
 const agentPrompts: Record<string, string> = {
-  chef: 'orange and coral colored friendly robot chef with chef hat',
-  sous: 'blue and teal colored egg-shaped cute cooking creature',
-  expeditor: 'purple and indigo glowing orb judge character with monocle',
+  chef: 'A cute friendly robot chef character with chef hat and ladle. Light gray and blue metallic colors. Vector art style with soft gradients. Simple geometric shapes, rounded friendly appearance. Clean white background. No text.',
+  sous: 'A whimsical purple octopus chef creature character. Cute cartoon style with soft gradients and rounded shapes. Playful and friendly expression. Clean white background. No text. Think indie game mascot.',
+  expeditor: 'A warm glowing sun orb character with a friendly face. Orange and golden yellow colors with soft gradients. Cosmic and magical appearance. Clean white background. No text. Vector art style.',
 };
 
 export const ChefAvatar: React.FC<ChefAvatarProps> = ({
@@ -24,27 +32,29 @@ export const ChefAvatar: React.FC<ChefAvatarProps> = ({
   const { getIllustration, requestIllustration } = useIllustrations();
   const [hasRequested, setHasRequested] = useState(false);
   
-  const promptKey = `chef_${agentType}`;
-  const illustrationState = getIllustration(promptKey);
+  // Use the unique agent key to get/request illustration
+  const agentKey = agentKeys[agentType];
+  const illustrationState = getIllustration(`chef_${agentKey}`);
 
   useEffect(() => {
     if (!hasRequested && !illustrationState.url && !illustrationState.isLoading) {
       setHasRequested(true);
-      requestIllustration(agentPrompts[agentType], 'chef');
+      // Pass the unique key as the "dishName" parameter so the context generates the correct promptKey
+      requestIllustration(agentKey, 'chef');
     }
-  }, [agentType, hasRequested, illustrationState, requestIllustration]);
+  }, [agentKey, hasRequested, illustrationState, requestIllustration]);
 
   return (
     <div 
       className={cn(
-        "w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden",
-        "bg-background/50 backdrop-blur-sm border border-border/50",
-        isActive && "animate-pulse",
+        "w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden",
+        "bg-background/80 backdrop-blur-sm border border-border/30 shadow-sm",
+        isActive && "ring-2 ring-processing/50",
         className
       )}
     >
       {illustrationState.isLoading && (
-        <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 animate-pulse" />
+        <div className="w-full h-full shimmer bg-gradient-to-br from-muted to-muted/50" />
       )}
       
       {illustrationState.url && !illustrationState.isLoading && (

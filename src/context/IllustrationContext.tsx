@@ -32,6 +32,13 @@ interface IllustrationProviderProps {
   children: ReactNode;
 }
 
+// Detailed prompts for chef avatars
+const chefPrompts: Record<string, string> = {
+  alchemist_robot_chef: 'A cute friendly robot chef character with chef hat and ladle. Light gray and blue metallic colors. Vector art style with soft gradients. Simple geometric shapes, rounded friendly appearance. Clean white background. No text.',
+  transmuter_octopus_creature: 'A whimsical purple octopus chef creature character. Cute cartoon style with soft gradients and rounded shapes. Playful and friendly expression. Clean white background. No text. Think indie game mascot.',
+  oracle_sun_orb: 'A warm glowing sun orb character with a friendly face. Orange and golden yellow colors with soft gradients. Cosmic and magical appearance. Clean white background. No text. Vector art style.',
+};
+
 export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ children }) => {
   const [illustrations, setIllustrations] = useState<Record<string, IllustrationState>>({});
   const pendingRequests = useRef<Set<string>>(new Set());
@@ -102,9 +109,13 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
             return;
           }
 
-          // Generate new illustration
+          // Generate new illustration - use chef-specific prompt if available
+          const actualPrompt = type === 'chef' && chefPrompts[dishName] 
+            ? chefPrompts[dishName] 
+            : dishName;
+            
           const { data, error } = await supabase.functions.invoke('generate-illustration', {
-            body: { dishName, type, promptKey }
+            body: { dishName: actualPrompt, type, promptKey }
           });
 
           if (error) {
