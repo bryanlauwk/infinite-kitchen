@@ -1,361 +1,299 @@
 
-
-# AI-Generated "Vector-Stylized Surrealism" Illustrations Plan
+# Cleanup Legacy Emoji System & Expand Orders Plan
 
 ## Overview
 
-Replace the current emoji + gradient system with AI-generated playful vector-style illustrations for all food/dish graphics and chef avatars. The illustrations will use the **Nano banana model** (`google/gemini-2.5-flash-image`) to generate stylized, whimsical food art matching the reference image aesthetic.
+This plan addresses two main objectives:
+1. **Clean up legacy emoji + gradient code** - Remove fallback systems and ensure AI-generated illustrations are the primary visual approach across all UI elements
+2. **Expand orders with more difficulty levels** - Add new difficulty tiers (beginner, expert, legendary) and significantly expand the dish catalog
 
 ---
 
-## Design Approach: "Vector-Stylized Surrealism"
+## Part 1: Remove Legacy Emoji + Gradient Fallbacks
 
-Based on the reference image, the illustration style features:
-- **Soft gradients with rounded shapes** (not realistic photos)
-- **Playful, cartoon-like food** with exaggerated features
-- **Surreal elements** (octopus soup, cosmic pasta swirls)
-- **Pastel color backgrounds** matching dish categories
-- **Consistent art style** across all illustrations
+### Current State Analysis
+
+The codebase currently maintains emoji data as fallback graphics in multiple places:
+
+| Component | Current Behavior | AI Illustration Ready? |
+|-----------|------------------|------------------------|
+| DishIllustration | Uses emoji + gradient as fallback | Yes |
+| ChefAvatar | Uses fallbackEmoji prop | Yes |
+| IngredientIllustration | Uses fallbackEmoji prop | Yes |
+| TechniqueIllustration | Uses fallbackEmoji prop | Yes |
+| IngredientTile | Shows emoji directly | No - needs update |
+| ToolTile | Shows emoji directly | No - needs update |
+| DishesArchive | Shows dish.emoji directly | No - needs update |
+| KitchenLog | Shows result.emoji in log | Needs consideration |
+
+### Files to Modify
+
+#### 1.1 Update DishIllustration.tsx
+- Remove `emoji` prop from interface
+- Remove gradient fallback import from `dishColors.ts`
+- Replace fallback with a neutral placeholder (shimmer only, no emoji)
+- The component will only show: loading shimmer OR AI image
+
+#### 1.2 Update ChefAvatar.tsx
+- Remove `fallbackEmoji` prop
+- Replace emoji fallback with a neutral "loading" icon or initials
+
+#### 1.3 Update IngredientIllustration.tsx
+- Remove `fallbackEmoji` prop
+- Show a neutral placeholder icon when no AI image is available
+
+#### 1.4 Update TechniqueIllustration.tsx
+- Remove `fallbackEmoji` prop
+- Show a neutral placeholder icon when no AI image is available
+
+#### 1.5 Update IngredientTile.tsx
+- Replace emoji display with `IngredientIllustration` component
+- This tile is used in some parts of the kitchen log
+
+#### 1.6 Update ToolTile.tsx
+- Replace emoji display with `TechniqueIllustration` component
+
+#### 1.7 Update DishesArchive.tsx
+- Replace `dish.emoji` display with a small `DishIllustration` component
+- Add the illustration in a compact format for the archive view
+
+#### 1.8 Clean Up Data Files
+While we keep the emoji data in the data files (they may be used by AI agents or logs), we ensure the UI components don't display them:
+- `src/data/ingredients.ts` - Keep emoji data for AI context
+- `src/data/tools.ts` - Keep emoji data for AI context
+- `src/data/orders.ts` - Keep emoji data for AI context
+
+#### 1.9 Consider KitchenLog.tsx
+The kitchen log shows `result.emoji` for alchemy results. Options:
+- **Option A**: Keep emoji in text-based log (acceptable for terminal aesthetic)
+- **Option B**: Remove and rely on result names only
+- **Recommendation**: Keep emojis in the log - they enhance the terminal feel and are already used in the AI agent responses
+
+#### 1.10 Remove/Mark dishColors.ts as deprecated
+- The `getDishGradient` function is now only used as a loading state background
+- We can simplify to a single neutral gradient or remove entirely
+
+### Components That Call with Emoji Props - Updates Needed
+
+| File | Props to Remove | Updates |
+|------|-----------------|---------|
+| OrderCard.tsx | `emoji` passed to DishIllustration | Remove prop |
+| IngredientsPanel.tsx | `fallbackEmoji` passed to IngredientIllustration | Remove prop |
+| TechniqueToggle.tsx | `fallbackEmoji` passed to TechniqueIllustration | Remove prop |
+| ChefsSection.tsx | `fallbackEmoji` passed to ChefAvatar | Remove prop |
 
 ---
 
-## Part 1: Image Generation Edge Function
+## Part 2: Expand Order Difficulty Levels and Dish Catalog
 
-### 1.1 Create `generate-illustration` Edge Function
+### 2.1 New Difficulty System
 
-A new edge function that generates illustrations on-demand:
+**Current Levels:**
+- easy (3-5 steps)
+- intermediate (5-8 steps)  
+- hard (8+ steps)
+
+**Expanded Levels:**
+- **beginner** (1-2 steps) - Very simple dishes for quick wins
+- **easy** (3-4 steps) - Simple dishes
+- **intermediate** (5-7 steps) - Moderate complexity
+- **hard** (8-10 steps) - Complex dishes
+- **expert** (11-15 steps) - Multi-technique masterpieces
+- **legendary** (16+ steps) - Epic culinary feats
+
+### 2.2 Update Type Definitions
 
 ```typescript
-// supabase/functions/generate-illustration/index.ts
-
-// Uses Nano banana model (google/gemini-2.5-flash-image)
-// Generates vector-style food illustrations based on dish name
-
-const prompt = `Create a playful, vector-stylized illustration of ${dishName}.
-
-Style requirements:
-- Cartoon/vector art style, NOT realistic
-- Soft gradients and rounded shapes
-- Playful and whimsical, slightly surreal
-- Clean white or light pastel background
-- Single centered food item
-- No text, no labels
-- Reminiscent of neal.fun or indie web game aesthetic
-- Think "squishy", "juicy" icons from early 2010s app design`;
+// src/lib/types.ts
+export type OrderDifficulty = 
+  | 'beginner' 
+  | 'easy' 
+  | 'intermediate' 
+  | 'hard' 
+  | 'expert' 
+  | 'legendary';
 ```
 
-### 1.2 Prompt Engineering for Consistency
+### 2.3 Update OrderCard.tsx Difficulty Config
 
-Different prompts for different illustration types:
+Add styling for new difficulty levels:
 
-**Dish Illustrations:**
-```text
-"A cute vector illustration of [dish name] on a light [color] gradient background. 
-Playful cartoon style with soft shadows. No text. Single centered dish. 
-Think whimsical food app icon."
-```
-
-**Chef Avatars:**
-```text
-"A playful cartoon robot chef character. Cute vector art style with soft gradients. 
-[Specific traits: orange for Alchemist, blue for Transmuter, purple for Oracle].
-Friendly face, simple geometric shapes. Think indie game mascot."
-```
-
----
-
-## Part 2: Illustration Storage & Caching
-
-### 2.1 Database Table for Illustration Cache
-
-Create a table to cache generated illustrations (avoid regenerating):
-
-```sql
-CREATE TABLE generated_illustrations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  prompt_key TEXT UNIQUE NOT NULL,  -- Hash of dish name + type
-  image_url TEXT NOT NULL,           -- Stored image URL or base64
-  dish_name TEXT,
-  illustration_type TEXT,            -- 'dish' or 'chef'
-  created_at TIMESTAMP DEFAULT now()
-);
-```
-
-### 2.2 Storage Bucket for Images
-
-Create a public storage bucket `illustrations` to store generated images permanently (instead of passing base64 around).
-
----
-
-## Part 3: Updated Components
-
-### 3.1 New `DishIllustration.tsx`
-
-Replace the current gradient + emoji approach with AI-generated images:
-
-```tsx
-interface DishIllustrationProps {
-  dishName: string;
-  orderId?: string;
-  className?: string;
-}
-
-export const DishIllustration: React.FC<DishIllustrationProps> = ({ 
-  dishName,
-  orderId,
-  className = ''
-}) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    async function fetchIllustration() {
-      // 1. Check cache first
-      // 2. If not cached, call generate-illustration edge function
-      // 3. Store result in cache and display
-    }
-    fetchIllustration();
-  }, [dishName]);
-  
-  return (
-    <div className={`relative w-full h-20 rounded-xl overflow-hidden ${className}`}>
-      {isLoading ? (
-        // Gradient placeholder while loading
-        <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 animate-pulse" />
-      ) : (
-        <img 
-          src={imageUrl} 
-          alt={dishName}
-          className="w-full h-full object-cover"
-        />
-      )}
-    </div>
-  );
+```typescript
+const difficultyConfig = {
+  beginner: { label: 'BEGINNER', className: 'bg-beginner text-beginner-foreground' },
+  easy: { label: 'EASY', className: 'bg-easy text-easy-foreground' },
+  intermediate: { label: 'MED', className: 'bg-intermediate text-intermediate-foreground' },
+  hard: { label: 'HARD', className: 'bg-hard text-hard-foreground' },
+  expert: { label: 'EXPERT', className: 'bg-expert text-expert-foreground' },
+  legendary: { label: 'LEGEND', className: 'bg-legendary text-legendary-foreground' },
 };
 ```
 
-### 3.2 Chef Avatar Illustrations
+### 2.4 Add CSS Variables for New Difficulty Colors
 
-Update `ChefsSection.tsx` to use generated chef avatars:
+In `src/index.css`, add new color variables:
 
-```tsx
-const chefProfiles: Record<AgentType, { 
-  title: string; 
-  quirk: string; 
-  illustrationPrompt: string;
-  fallbackEmoji: string;
-}> = {
-  chef: {
-    title: 'The Alchemist Unit',
-    quirk: 'Crafts transformation stages across arguments.',
-    illustrationPrompt: 'cute robot chef with orange and coral colors',
-    fallbackEmoji: '🤖',
-  },
-  sous: {
-    title: 'The Skiers Conf',  // Per reference image
-    quirk: 'Erstfts t uodifir ante tnqutrks.',  // Gibberish per reference
-    illustrationPrompt: 'friendly egg-shaped chef creature in warm tones',
-    fallbackEmoji: '🥚',
-  },
-  expeditor: {
-    title: 'Nexus Noodle Weaver',  // Per reference image
-    quirk: 'Vostfrs lrus Newle abrore actians.',
-    illustrationPrompt: 'glowing sun-like chef orb in yellow and orange',
-    fallbackEmoji: '☀️',
-  },
-};
-```
-
-### 3.3 Illustration Provider Context
-
-Create a context to manage illustration loading/caching state across the app:
-
-```tsx
-// src/context/IllustrationContext.tsx
-
-interface IllustrationContextType {
-  getIllustration: (key: string, type: 'dish' | 'chef') => string | null;
-  requestIllustration: (key: string, type: 'dish' | 'chef', prompt: string) => Promise<string>;
-  isLoading: (key: string) => boolean;
+```css
+:root {
+  --beginner: 180 60% 45%;        /* Teal/cyan */
+  --beginner-foreground: 0 0% 100%;
+  --expert: 280 60% 55%;           /* Purple */
+  --expert-foreground: 0 0% 100%;
+  --legendary: 45 100% 50%;        /* Gold */
+  --legendary-foreground: 0 0% 10%;
 }
 ```
 
----
+### 2.5 Expanded Order Templates
 
-## Part 4: Pre-generation Strategy
+Significantly expand the dish catalog from 20 to 60+ dishes:
 
-### 4.1 Pre-generate Default Order Illustrations
+**Beginner (1-2 steps) - 8 dishes:**
+- Sliced Apple
+- Buttered Bread
+- Glass of Milk
+- Fresh Orange Juice
+- Cheese Plate
+- Mixed Nuts
+- Fruit Bowl
+- Toast with Jam
 
-When the app initializes, pre-generate illustrations for the default order templates:
+**Easy (3-4 steps) - 12 dishes:**
+(Keep existing 6, add 6 more)
+- Caprese Salad
+- Boiled Rice
+- Mashed Potatoes
+- Guacamole
+- Hummus
+- Overnight Oats
+
+**Intermediate (5-7 steps) - 14 dishes:**
+(Keep existing 8, add 6 more)
+- Pad Thai
+- Shakshuka
+- Eggs Benedict
+- Risotto
+- Pho
+- Tom Yum Soup
+
+**Hard (8-10 steps) - 12 dishes:**
+(Keep existing 6, add 6 more)
+- Croissants
+- Dim Sum
+- Tiramisu
+- Soufflé
+- Bouillabaisse
+- Ratatouille
+
+**Expert (11-15 steps) - 10 dishes:**
+- Beef Bourguignon
+- Cassoulet
+- Paella
+- Bibimbap
+- Mole Poblano
+- Xiaolongbao (Soup Dumplings)
+- Baked Alaska
+- Croquembouche
+- Turducken
+- Peking Duck (upgraded from hard)
+
+**Legendary (16+ steps) - 8 dishes:**
+- French Onion Soup Gratinée (from scratch)
+- Homemade Ramen (48-hour broth)
+- Seven-Layer Dip Supreme
+- Wedding Cake
+- Full English Breakfast
+- Thanksgiving Feast
+- Kaiseki Multi-Course
+- Molecular Gastronomy Tasting Menu
+
+### 2.6 Update Initial Orders Display
+
+In `KitchenContext.tsx`, update the initial orders to show a varied selection:
 
 ```typescript
-// In KitchenContext initialization
-const defaultDishes = orderTemplates.map(t => t.dishName);
-// Batch request illustrations for all default dishes
+// Show 2 from each difficulty level initially
+const initialOrders = [
+  ...orderTemplates.filter(t => t.difficulty === 'beginner').slice(0, 1),
+  ...orderTemplates.filter(t => t.difficulty === 'easy').slice(0, 2),
+  ...orderTemplates.filter(t => t.difficulty === 'intermediate').slice(0, 2),
+  ...orderTemplates.filter(t => t.difficulty === 'hard').slice(0, 1),
+  ...orderTemplates.filter(t => t.difficulty === 'expert').slice(0, 1),
+  ...orderTemplates.filter(t => t.difficulty === 'legendary').slice(0, 1),
+].map(template => createOrder(template));
 ```
-
-### 4.2 Lazy Generation for Custom Orders
-
-When a user adds a custom order, generate the illustration in the background:
-1. Show gradient placeholder immediately
-2. Start generation request
-3. Fade in the generated illustration when ready
 
 ---
 
-## Part 5: Fallback Strategy
+## Part 3: Update Pre-generation Hook
 
-### 5.1 Progressive Enhancement
+Update `usePreGenerateIllustrations.ts` to pre-generate illustrations for the new expanded dish set:
 
-If illustration generation fails:
-1. **First fallback**: Use the current gradient + emoji system
-2. **Visual indicator**: Subtle shimmer effect to show "illustration pending"
-
-### 5.2 Rate Limiting Handling
-
-- Queue illustration requests
-- Maximum 3 concurrent generations
-- Exponential backoff on 429 errors
+- Prioritize visible dishes (initial 8-10)
+- Add staggered generation for remaining dishes
+- Ensure new difficulty levels are covered
 
 ---
 
 ## File Changes Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/functions/generate-illustration/index.ts` | Create | Edge function for AI image generation |
-| `src/lib/api.ts` | Modify | Add `generateIllustration()` function |
-| `src/lib/types.ts` | Modify | Add `illustrationUrl?: string` to Order type |
-| `src/context/IllustrationContext.tsx` | Create | Manage illustration state/cache |
-| `src/components/kitchen/DishIllustration.tsx` | Modify | Use AI-generated images |
-| `src/components/kitchen/ChefAvatar.tsx` | Create | Dedicated chef illustration component |
-| `src/components/kitchen/ChefsSection.tsx` | Modify | Use ChefAvatar component |
-| `src/data/orders.ts` | Modify | Add illustration prompts to order templates |
+| File | Action | Description |
+|------|--------|-------------|
+| `src/lib/types.ts` | Modify | Add new difficulty types |
+| `src/data/orders.ts` | Modify | Expand to 60+ dishes with 6 difficulty levels |
+| `src/components/kitchen/OrderCard.tsx` | Modify | Add difficulty config, remove emoji prop usage |
+| `src/components/kitchen/DishIllustration.tsx` | Modify | Remove emoji prop, simplify fallback |
+| `src/components/kitchen/ChefAvatar.tsx` | Modify | Remove fallbackEmoji prop |
+| `src/components/kitchen/IngredientIllustration.tsx` | Modify | Remove fallbackEmoji prop |
+| `src/components/kitchen/TechniqueIllustration.tsx` | Modify | Remove fallbackEmoji prop |
+| `src/components/kitchen/IngredientsPanel.tsx` | Modify | Remove emoji prop from IngredientIllustration |
+| `src/components/kitchen/TechniqueToggle.tsx` | Modify | Remove emoji prop from TechniqueIllustration |
+| `src/components/kitchen/ChefsSection.tsx` | Modify | Remove fallbackEmoji prop from ChefAvatar |
+| `src/components/kitchen/DishesArchive.tsx` | Modify | Replace emoji with DishIllustration |
+| `src/components/tiles/IngredientTile.tsx` | Modify | Use IngredientIllustration component |
+| `src/components/tiles/ToolTile.tsx` | Modify | Use TechniqueIllustration component |
+| `src/context/KitchenContext.tsx` | Modify | Update initial orders selection |
+| `src/hooks/usePreGenerateIllustrations.ts` | Modify | Update for expanded dishes |
+| `src/index.css` | Modify | Add new difficulty level color variables |
+| `src/lib/dishColors.ts` | Mark deprecated | Optional cleanup, simplify to loading gradient |
 
 ---
 
-## Database Changes
+## Technical Notes
 
-Create a caching table for generated illustrations:
+### Preserving Backward Compatibility
 
-```sql
-CREATE TABLE generated_illustrations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  prompt_key TEXT UNIQUE NOT NULL,
-  image_url TEXT NOT NULL,
-  dish_name TEXT,
-  illustration_type TEXT CHECK (illustration_type IN ('dish', 'chef')),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+1. **Emoji data in source files**: The emoji field stays in `Ingredient`, `Tool`, `Order` types because:
+   - AI agents may reference them in responses
+   - Kitchen log may display them for results
+   - They serve as semantic hints for the system
 
--- Enable RLS (public read, restricted write via service role)
-ALTER TABLE generated_illustrations ENABLE ROW LEVEL SECURITY;
+2. **Component interfaces**: Props are removed from UI components, but the underlying data structures remain unchanged
 
--- Anyone can read illustrations
-CREATE POLICY "Public read access" ON generated_illustrations
-  FOR SELECT USING (true);
+3. **Kitchen Log**: Emojis in the terminal log enhance the text-based aesthetic and come from AI responses, so they're preserved
 
--- Only service role can insert (edge function)
-CREATE POLICY "Service role insert" ON generated_illustrations
-  FOR INSERT WITH CHECK (true);
+### CSS Color Scheme for Difficulties
+
+```text
+Beginner: Teal/Cyan (fresh, approachable)
+Easy: Green (existing)
+Intermediate: Yellow/Amber (existing)
+Hard: Orange/Red (existing)
+Expert: Purple (prestigious)
+Legendary: Gold (ultimate achievement)
 ```
 
 ---
 
-## Edge Function Implementation
+## Testing Checklist
 
-### generate-illustration/index.ts
-
-```typescript
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-serve(async (req) => {
-  const { dishName, type, promptKey } = await req.json();
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
-  // Check cache first
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-  
-  const { data: cached } = await supabase
-    .from('generated_illustrations')
-    .select('image_url')
-    .eq('prompt_key', promptKey)
-    .single();
-    
-  if (cached) {
-    return new Response(JSON.stringify({ imageUrl: cached.image_url }));
-  }
-  
-  // Generate new illustration
-  const prompt = type === 'dish' 
-    ? `A playful vector illustration of ${dishName}. Cute cartoon style with soft gradients...`
-    : `A whimsical robot chef character...`;
-    
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-image",
-      messages: [{ role: "user", content: prompt }],
-      modalities: ["image", "text"]
-    }),
-  });
-  
-  const data = await response.json();
-  const imageBase64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  
-  // Upload to storage bucket
-  const fileName = `${promptKey}.png`;
-  // ... upload logic ...
-  
-  // Cache in database
-  await supabase.from('generated_illustrations').insert({
-    prompt_key: promptKey,
-    image_url: publicUrl,
-    dish_name: dishName,
-    illustration_type: type
-  });
-  
-  return new Response(JSON.stringify({ imageUrl: publicUrl }));
-});
-```
-
----
-
-## Expected Results
-
-After implementation:
-
-1. **Order Cards** display AI-generated vector-style food illustrations matching the reference image aesthetic
-2. **Chef Avatars** are playful robot/creature characters instead of emoji
-3. **Illustrations are cached** in the database to avoid regeneration costs
-4. **Graceful fallbacks** ensure the app works even if generation fails
-5. **Consistent art style** across all generated images through careful prompt engineering
-
----
-
-## Technical Considerations
-
-### Image Size Management
-- Generated images can be large (base64)
-- Upload to storage bucket immediately
-- Store only public URLs in the database
-- This prevents passing large payloads to the frontend
-
-### Generation Time
-- AI image generation takes 3-10 seconds
-- Show loading placeholder with gradient animation
-- Pre-generate common dishes on first load
-
-### Cost Efficiency
-- Cache all generated images
-- Hash dish names to create unique prompt keys
-- Avoid regenerating for identical prompts
-
+After implementation, verify:
+- [ ] All illustration components show shimmer during loading
+- [ ] AI-generated images display correctly when available
+- [ ] No emoji/gradient fallbacks visible in UI (except kitchen log)
+- [ ] All 6 difficulty levels display with correct styling
+- [ ] New dishes appear in order queue
+- [ ] Difficulty badges show correct labels and colors
+- [ ] Pre-generation covers priority dishes from all levels
+- [ ] DishesArchive shows dish illustrations instead of emojis
+- [ ] No breaking changes to cooking loop or agent functionality
