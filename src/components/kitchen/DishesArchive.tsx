@@ -2,6 +2,7 @@ import React from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { renderStars } from '@/lib/reviewGenerator';
 import { cn } from '@/lib/utils';
+import { DishIllustration } from './DishIllustration';
 
 export const DishesArchive: React.FC = () => {
   const { orders } = useKitchen();
@@ -38,7 +39,12 @@ export const DishesArchive: React.FC = () => {
             >
               {/* Dish info row */}
               <div className="flex items-start gap-3 mb-2">
-                <span className="text-2xl flex-shrink-0">{dish.emoji}</span>
+                <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden">
+                  <DishIllustration 
+                    dishName={dish.servedDish || dish.dishName}
+                    className="w-full h-full"
+                  />
+                </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-sm leading-tight">
                     {dish.servedDish || dish.dishName}
@@ -53,7 +59,7 @@ export const DishesArchive: React.FC = () => {
               
               {/* Review block - delayed feel */}
               {dish.review && (
-                <div className="ml-9 mt-3 p-3 bg-secondary/50 rounded-md border border-border/50">
+                <div className="ml-15 mt-3 p-3 bg-secondary/50 rounded-md border border-border/50">
                   <div className="flex items-center gap-2 mb-1">
                     <span 
                       className="text-sm tracking-wider"
@@ -70,7 +76,7 @@ export const DishesArchive: React.FC = () => {
               
               {/* Waiting for review indicator */}
               {!dish.review && dish.status !== 'rejected' && (
-                <div className="ml-9 mt-3 text-xs text-muted-foreground">
+                <div className="ml-15 mt-3 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="w-1 h-1 rounded-full bg-muted-foreground/50 animate-pulse" />
                     awaiting feedback
@@ -80,7 +86,7 @@ export const DishesArchive: React.FC = () => {
               
               {/* Rejected dishes don't get reviews */}
               {dish.status === 'rejected' && !dish.review && (
-                <div className="ml-9 mt-2 text-xs text-muted-foreground">
+                <div className="ml-15 mt-2 text-xs text-muted-foreground">
                   <span className="opacity-60">Something felt off.</span>
                 </div>
               )}

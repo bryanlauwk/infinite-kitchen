@@ -4,13 +4,11 @@ import { cn } from '@/lib/utils';
 
 interface IngredientIllustrationProps {
   ingredientName: string;
-  fallbackEmoji: string;
   className?: string;
 }
 
 export const IngredientIllustration: React.FC<IngredientIllustrationProps> = ({
   ingredientName,
-  fallbackEmoji,
   className,
 }) => {
   const { getIllustration, requestIllustration } = useIllustrations();
@@ -24,7 +22,6 @@ export const IngredientIllustration: React.FC<IngredientIllustrationProps> = ({
   useEffect(() => {
     if (!hasRequested && !illustrationState.url && !illustrationState.isLoading) {
       setHasRequested(true);
-      // Request with 'ingredient' type which will be handled by the context
       requestIllustration(ingredientName, 'ingredient' as any);
     }
   }, [ingredientName, hasRequested, illustrationState, requestIllustration]);
@@ -49,8 +46,9 @@ export const IngredientIllustration: React.FC<IngredientIllustrationProps> = ({
         />
       )}
       
+      {/* Neutral placeholder - small dot */}
       {!illustrationState.url && !illustrationState.isLoading && (
-        <span className="text-base">{fallbackEmoji}</span>
+        <div className="w-3 h-3 rounded-full bg-muted-foreground/20" />
       )}
     </div>
   );

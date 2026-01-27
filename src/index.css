@@ -58,7 +58,10 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Difficulty badges */
+    /* Difficulty badges - 6 levels */
+    --beginner: 180 60% 45%;
+    --beginner-foreground: 0 0% 100%;
+    
     --easy: 142 71% 45%;
     --easy-foreground: 0 0% 100%;
     
@@ -67,6 +70,12 @@
     
     --hard: 0 84% 60%;
     --hard-foreground: 0 0% 100%;
+    
+    --expert: 280 60% 55%;
+    --expert-foreground: 0 0% 100%;
+    
+    --legendary: 45 100% 50%;
+    --legendary-foreground: 0 0% 10%;
 
     /* Hero banner - Warm yellow */
     --hero: 45 80% 92%;
@@ -130,6 +139,10 @@
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Difficulty badges - 6 levels (dark mode) */
+    --beginner: 180 55% 40%;
+    --beginner-foreground: 0 0% 100%;
+    
     --easy: 142 71% 45%;
     --easy-foreground: 0 0% 100%;
     
@@ -138,6 +151,12 @@
     
     --hard: 0 62% 50%;
     --hard-foreground: 0 0% 100%;
+    
+    --expert: 280 55% 50%;
+    --expert-foreground: 0 0% 100%;
+    
+    --legendary: 45 100% 50%;
+    --legendary-foreground: 0 0% 10%;
 
     --hero: 45 50% 20%;
     --hero-foreground: 40 20% 95%;
@@ -357,7 +376,11 @@
       0 12px 32px -8px rgba(0, 0, 0, 0.1);
   }
 
-  /* Order card pastel backgrounds */
+  /* Order card pastel backgrounds - 6 levels */
+  .order-card-beginner {
+    background: linear-gradient(135deg, hsl(180 50% 95%) 0%, hsl(180 45% 92%) 100%);
+  }
+
   .order-card-easy {
     background: linear-gradient(135deg, hsl(142 60% 95%) 0%, hsl(142 50% 92%) 100%);
   }
@@ -370,6 +393,18 @@
     background: linear-gradient(135deg, hsl(0 70% 95%) 0%, hsl(0 60% 92%) 100%);
   }
 
+  .order-card-expert {
+    background: linear-gradient(135deg, hsl(280 60% 95%) 0%, hsl(280 50% 92%) 100%);
+  }
+
+  .order-card-legendary {
+    background: linear-gradient(135deg, hsl(45 100% 95%) 0%, hsl(45 90% 88%) 100%);
+  }
+
+  .dark .order-card-beginner {
+    background: linear-gradient(135deg, hsl(180 30% 18%) 0%, hsl(180 25% 15%) 100%);
+  }
+
   .dark .order-card-easy {
     background: linear-gradient(135deg, hsl(142 30% 18%) 0%, hsl(142 25% 15%) 100%);
   }
@@ -380,6 +415,14 @@
 
   .dark .order-card-hard {
     background: linear-gradient(135deg, hsl(0 35% 18%) 0%, hsl(0 30% 15%) 100%);
+  }
+
+  .dark .order-card-expert {
+    background: linear-gradient(135deg, hsl(280 35% 18%) 0%, hsl(280 30% 15%) 100%);
+  }
+
+  .dark .order-card-legendary {
+    background: linear-gradient(135deg, hsl(45 50% 20%) 0%, hsl(45 45% 16%) 100%);
   }
 
   /* Grainy texture overlay for illustration areas */
