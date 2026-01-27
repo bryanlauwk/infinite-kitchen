@@ -1,118 +1,113 @@
 
 
-# Fix Dish Display and Add Difficulty Filter
+# Add Malaysian Cuisine to the Dish Catalog
 
-## Problem Identified
+## Overview
 
-The code correctly loads all 64 dishes from `orderTemplates` in `KitchenContext.tsx`. However, there may be visibility issues:
-
-1. The ScrollArea has a fixed `maxHeight: 600px` which might make it unclear that more dishes are available below
-2. No quick way to filter/navigate 64 dishes across 6 difficulty levels
-3. Grid layout `grid-cols-2 sm:grid-cols-3 md:grid-cols-4` may make it hard to see all dishes at once
-
-## Solution
-
-### 1. Add Difficulty Filter Dropdown
-
-Add a filter dropdown in the OrderQueue header that allows users to:
-- View "All Dishes" (default) - shows all 64 dishes grouped by difficulty
-- Filter to a specific difficulty level (Beginner, Easy, Intermediate, Hard, Expert, Legendary)
-- Show count of dishes in each filter option
-
-### 2. Improve Visibility Indicators
-
-- Add a visual indicator showing total dishes available vs. currently visible
-- Ensure the scroll area properly displays all content
+Adding authentic Malaysian dishes across all difficulty levels to provide better culinary variation and local representation. These dishes reflect Malaysia's rich multicultural food heritage.
 
 ---
 
-## Implementation Details
+## Malaysian Dishes to Add
 
-### File: `src/components/kitchen/OrderQueue.tsx`
+### Easy (3-4 steps)
+| Dish | Description |
+|------|-------------|
+| **Teh Tarik** | Pulled milk tea - simple but requires technique |
+| **Roti Canai** | Flatbread with curry dip (simplified version) |
 
-**Changes:**
+### Intermediate (5-7 steps)
+| Dish | Description |
+|------|-------------|
+| **Nasi Lemak Ayam** | Coconut rice with fried chicken, sambal, egg, anchovies |
+| **Mee Goreng** | Spicy stir-fried noodles with vegetables and protein |
+| **Char Kway Teow** | Stir-fried flat rice noodles with prawns and Chinese sausage |
+| **Laksa** | Spicy coconut curry noodle soup |
 
-1. Add state for selected difficulty filter:
-```typescript
-const [selectedDifficulty, setSelectedDifficulty] = useState<OrderDifficulty | 'all'>('all');
-```
+### Hard (8-10 steps)
+| Dish | Description |
+|------|-------------|
+| **Bak Kut Teh** | Pork rib tea soup with complex herbal broth |
+| **Hainanese Chicken Rice** | Poached chicken with aromatic rice and three sauces |
+| **Satay** | Grilled meat skewers with peanut sauce and accompaniments |
+| **Curry Laksa** | Rich curry noodle soup with multiple toppings |
 
-2. Add filter logic:
-```typescript
-const filteredOrders = selectedDifficulty === 'all' 
-  ? pendingOrders 
-  : pendingOrders.filter(o => o.difficulty === selectedDifficulty);
-```
+### Expert (11-15 steps)
+| Dish | Description |
+|------|-------------|
+| **Nasi Kandar** | Rice with multiple curries and side dishes |
+| **Ayam Percik** | Grilled chicken with spiced coconut gravy |
+| **Murtabak** | Stuffed pan-fried flatbread with meat filling |
 
-3. Add Select dropdown in header area with options:
-   - "All Dishes (64)"
-   - "Beginner (8)"
-   - "Easy (12)"
-   - "Intermediate (14)"
-   - "Hard (12)"
-   - "Expert (10)"
-   - "Legendary (8)"
-
-4. Update the subtitle to show dynamic count:
-```typescript
-<p className="text-xs text-muted-foreground">
-  Showing {filteredOrders.length} of {pendingOrders.length} dishes
-</p>
-```
-
-5. Conditionally render difficulty sections based on filter:
-   - When "All" is selected: Show grouped by difficulty (current behavior)
-   - When specific difficulty is selected: Show flat grid without group headers
+### Legendary (16+ steps)
+| Dish | Description |
+|------|-------------|
+| **Nasi Kerabu** | Blue rice with herbs, vegetables, and multiple components |
+| **Malaysian Steamboat** | Full hot pot feast with multiple broths and ingredients |
 
 ---
 
-## UI Layout
+## Implementation
 
-```text
-+------------------------------------------+
-| THE ORDERS OF THE UNIVERSE    [Filter v] |
-| Showing 64 of 64 dishes        [Audio]   |
-+------------------------------------------+
-| [Add custom dish input]                  |
-+------------------------------------------+
-| BEGINNER (8)                             |
-| [Card][Card][Card][Card]                 |
-| [Card][Card][Card][Card]                 |
-|------------------------------------------|
-| EASY (12)                                |
-| [Card][Card][Card][Card]                 |
-| ...                                      |
-+------------------------------------------+
-```
+### File: `src/data/orders.ts`
 
-When filtered to "Expert":
+Add 15 Malaysian dishes distributed across difficulty levels:
 
-```text
-+------------------------------------------+
-| THE ORDERS OF THE UNIVERSE    [Expert v] |
-| Showing 10 of 64 dishes        [Audio]   |
-+------------------------------------------+
-| [Card][Card][Card][Card]                 |
-| [Card][Card][Card][Card]                 |
-| [Card][Card]                             |
-+------------------------------------------+
+```typescript
+// Easy - Add after existing easy dishes
+{ id: 'teh_tarik', dishName: 'Teh Tarik', emoji: '🍵', difficulty: 'easy' },
+{ id: 'roti_canai', dishName: 'Roti Canai', emoji: '🫓', difficulty: 'easy' },
+
+// Intermediate - Add after existing intermediate dishes
+{ id: 'nasi_lemak_ayam', dishName: 'Nasi Lemak Ayam', emoji: '🍚', difficulty: 'intermediate' },
+{ id: 'mee_goreng', dishName: 'Mee Goreng', emoji: '🍜', difficulty: 'intermediate' },
+{ id: 'char_kway_teow', dishName: 'Char Kway Teow', emoji: '🍜', difficulty: 'intermediate' },
+{ id: 'laksa', dishName: 'Laksa', emoji: '🍜', difficulty: 'intermediate' },
+
+// Hard - Add after existing hard dishes
+{ id: 'bak_kut_teh', dishName: 'Bak Kut Teh', emoji: '🍲', difficulty: 'hard' },
+{ id: 'hainanese_chicken_rice', dishName: 'Hainanese Chicken Rice', emoji: '🍗', difficulty: 'hard' },
+{ id: 'satay', dishName: 'Satay', emoji: '🍢', difficulty: 'hard' },
+{ id: 'curry_laksa', dishName: 'Curry Laksa', emoji: '🍜', difficulty: 'hard' },
+
+// Expert - Add after existing expert dishes (Beef Rendang already exists!)
+{ id: 'nasi_kandar', dishName: 'Nasi Kandar', emoji: '🍛', difficulty: 'expert' },
+{ id: 'ayam_percik', dishName: 'Ayam Percik', emoji: '🍗', difficulty: 'expert' },
+{ id: 'murtabak', dishName: 'Murtabak', emoji: '🫓', difficulty: 'expert' },
+
+// Legendary - Add after existing legendary dishes
+{ id: 'nasi_kerabu', dishName: 'Nasi Kerabu', emoji: '🍚', difficulty: 'legendary' },
+{ id: 'malaysian_steamboat', dishName: 'Malaysian Steamboat', emoji: '🫕', difficulty: 'legendary' },
 ```
 
 ---
 
-## Files to Modify
+## Updated Dish Count
+
+| Difficulty | Before | After |
+|------------|--------|-------|
+| Beginner | 8 | 8 |
+| Easy | 12 | 14 (+2) |
+| Intermediate | 14 | 18 (+4) |
+| Hard | 12 | 16 (+4) |
+| Expert | 10 | 13 (+3) |
+| Legendary | 8 | 10 (+2) |
+| **Total** | **64** | **79** (+15) |
+
+---
+
+## File Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/components/kitchen/OrderQueue.tsx` | Add difficulty filter state, Select dropdown, filter logic, dynamic counts |
+| `src/data/orders.ts` | Add 15 Malaysian dish templates across 5 difficulty levels |
 
 ---
 
-## Technical Notes
+## Notes
 
-- Uses existing `Select` component from `@/components/ui/select`
-- Filter options include dish counts calculated from `pendingOrders`
-- Maintains backward compatibility with existing order grouping
-- "All" filter preserves the grouped-by-difficulty view
-- Single difficulty filter shows a flat grid for cleaner view
+- **Beef Rendang** is already included in the Expert category
+- Dishes are categorized by actual cooking complexity (e.g., Bak Kut Teh requires slow simmering of herbal broth = Hard)
+- The filter dropdown will automatically update counts to reflect new dishes
+- AI illustration generation will create unique surrealist visuals for each Malaysian dish
 
