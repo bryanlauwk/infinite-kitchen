@@ -31,6 +31,8 @@ export const orderTemplates: OrderTemplate[] = [
   { id: 'guacamole', dishName: 'Guacamole', emoji: '🥑', difficulty: 'easy' },
   { id: 'hummus', dishName: 'Hummus', emoji: '🫘', difficulty: 'easy' },
   { id: 'overnight_oats', dishName: 'Overnight Oats', emoji: '🥣', difficulty: 'easy' },
+  { id: 'teh_tarik', dishName: 'Teh Tarik', emoji: '🍵', difficulty: 'easy' },
+  { id: 'roti_canai', dishName: 'Roti Canai', emoji: '🫓', difficulty: 'easy' },
 
   // Intermediate (5-7 steps) - Moderate complexity
   { id: 'margherita_pizza', dishName: 'Margherita Pizza', emoji: '🍕', difficulty: 'intermediate' },
@@ -47,6 +49,10 @@ export const orderTemplates: OrderTemplate[] = [
   { id: 'risotto', dishName: 'Risotto', emoji: '🍚', difficulty: 'intermediate' },
   { id: 'pho', dishName: 'Pho', emoji: '🍜', difficulty: 'intermediate' },
   { id: 'tom_yum_soup', dishName: 'Tom Yum Soup', emoji: '🍲', difficulty: 'intermediate' },
+  { id: 'nasi_lemak_ayam', dishName: 'Nasi Lemak Ayam', emoji: '🍚', difficulty: 'intermediate' },
+  { id: 'mee_goreng', dishName: 'Mee Goreng', emoji: '🍜', difficulty: 'intermediate' },
+  { id: 'char_kway_teow', dishName: 'Char Kway Teow', emoji: '🍜', difficulty: 'intermediate' },
+  { id: 'laksa', dishName: 'Laksa', emoji: '🍜', difficulty: 'intermediate' },
 
   // Hard (8-10 steps) - Complex dishes
   { id: 'beef_wellington', dishName: 'Beef Wellington', emoji: '🥩', difficulty: 'hard' },
@@ -61,6 +67,10 @@ export const orderTemplates: OrderTemplate[] = [
   { id: 'bouillabaisse', dishName: 'Bouillabaisse', emoji: '🍲', difficulty: 'hard' },
   { id: 'ratatouille', dishName: 'Ratatouille', emoji: '🍆', difficulty: 'hard' },
   { id: 'beef_bourguignon', dishName: 'Beef Bourguignon', emoji: '🥘', difficulty: 'hard' },
+  { id: 'bak_kut_teh', dishName: 'Bak Kut Teh', emoji: '🍲', difficulty: 'hard' },
+  { id: 'hainanese_chicken_rice', dishName: 'Hainanese Chicken Rice', emoji: '🍗', difficulty: 'hard' },
+  { id: 'satay', dishName: 'Satay', emoji: '🍢', difficulty: 'hard' },
+  { id: 'curry_laksa', dishName: 'Curry Laksa', emoji: '🍜', difficulty: 'hard' },
 
   // Expert (11-15 steps) - Multi-technique masterpieces
   { id: 'cassoulet', dishName: 'Cassoulet', emoji: '🫘', difficulty: 'expert' },
@@ -73,6 +83,9 @@ export const orderTemplates: OrderTemplate[] = [
   { id: 'turducken', dishName: 'Turducken', emoji: '🦃', difficulty: 'expert' },
   { id: 'peking_duck', dishName: 'Peking Duck', emoji: '🦆', difficulty: 'expert' },
   { id: 'beef_rendang', dishName: 'Beef Rendang', emoji: '🍖', difficulty: 'expert' },
+  { id: 'nasi_kandar', dishName: 'Nasi Kandar', emoji: '🍛', difficulty: 'expert' },
+  { id: 'ayam_percik', dishName: 'Ayam Percik', emoji: '🍗', difficulty: 'expert' },
+  { id: 'murtabak', dishName: 'Murtabak', emoji: '🫓', difficulty: 'expert' },
 
   // Legendary (16+ steps) - Epic culinary feats
   { id: 'french_onion_soup', dishName: 'French Onion Soup Gratinée', emoji: '🧅', difficulty: 'legendary' },
@@ -83,6 +96,8 @@ export const orderTemplates: OrderTemplate[] = [
   { id: 'thanksgiving_feast', dishName: 'Thanksgiving Feast', emoji: '🦃', difficulty: 'legendary' },
   { id: 'kaiseki', dishName: 'Kaiseki Multi-Course', emoji: '🍱', difficulty: 'legendary' },
   { id: 'molecular_menu', dishName: 'Molecular Gastronomy Tasting', emoji: '🧪', difficulty: 'legendary' },
+  { id: 'nasi_kerabu', dishName: 'Nasi Kerabu', emoji: '🍚', difficulty: 'legendary' },
+  { id: 'malaysian_steamboat', dishName: 'Malaysian Steamboat', emoji: '🫕', difficulty: 'legendary' },
 ];
 
 export const createOrder = (template: OrderTemplate): Order => ({
