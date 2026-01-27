@@ -102,16 +102,48 @@ Does the served dish fulfill the order?`;
     const data = await response.json();
     const toolCalls = data.choices?.[0]?.message?.tool_calls;
     
-    if (!toolCalls || toolCalls.length === 0) {
-      throw new Error("No tool call response from AI");
+    // If we got a tool call, parse it
+    if (toolCalls && toolCalls.length > 0) {
+      try {
+        const result = JSON.parse(toolCalls[0].function.arguments);
+        return new Response(JSON.stringify({
+          match: result.match,
+          confidence: result.confidence,
+          reasoning: result.reasoning
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (parseError) {
+        console.error("Failed to parse tool call arguments:", parseError);
+      }
     }
 
-    const result = JSON.parse(toolCalls[0].function.arguments);
-
+    // Fallback: Try to parse from message content
+    const content = data.choices?.[0]?.message?.content || "";
+    console.warn("No tool call from judge agent, parsing text:", content);
+    
+    // Simple heuristic based on content
+    const lowerContent = content.toLowerCase();
+    const isMatch = 
+      lowerContent.includes('yes') || 
+      lowerContent.includes('match') || 
+      lowerContent.includes('fulfills') ||
+      lowerContent.includes('correct') ||
+      (lowerContent.includes('similar') && !lowerContent.includes('not similar'));
+    
+    const isReject = 
+      lowerContent.includes('no') ||
+      lowerContent.includes('does not match') ||
+      lowerContent.includes('different') ||
+      lowerContent.includes('reject');
+    
+    // Determine match based on content analysis
+    const match = isMatch && !isReject;
+    
     return new Response(JSON.stringify({
-      match: result.match,
-      confidence: result.confidence,
-      reasoning: result.reasoning
+      match,
+      confidence: 70,
+      reasoning: content.slice(0, 100) || (match ? "Dish appears to match the order" : "Dish does not match the order")
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

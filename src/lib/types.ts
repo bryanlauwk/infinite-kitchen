@@ -54,6 +54,12 @@ export type OrderStatus =
   | 'verified'
   | 'rejected';
 
+export interface PreviousAttempt {
+  servedDish: string;
+  reasoning: string;
+  timestamp: number;
+}
+
 export interface Order {
   id: string;
   dishName: string;
@@ -64,6 +70,8 @@ export interface Order {
   servedDish?: string;
   judgeResult?: JudgeResult;
   review?: CustomerReview;
+  recookCount?: number;
+  previousAttempts?: PreviousAttempt[];
 }
 
 export interface JudgeResult {

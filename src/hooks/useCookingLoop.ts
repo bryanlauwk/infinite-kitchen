@@ -1,13 +1,33 @@
 import { useCallback, useRef } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { useAgents } from '@/context/AgentContext';
+import { useSound } from '@/context/SoundContext';
 import { callCookingAgent, callAlchemyAgent, callJudgeAgent } from '@/lib/api';
 import { ConversationMessage, Ingredient } from '@/lib/types';
-import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { generateReview } from '@/lib/reviewGenerator';
 import { toast } from 'sonner';
 
 const MAX_ITERATIONS = 20; // Safety limit
+const MAX_NO_ACTION_ITERATIONS = 3; // Auto-complete after this many empty responses
+
+// Retry helper with exponential backoff
+async function callWithRetry<T>(
+  fn: () => Promise<T>, 
+  maxRetries: number = 2,
+  baseDelay: number = 1000
+): Promise<T> {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries) throw error;
+      const delay = baseDelay * Math.pow(2, i);
+      console.warn(`Retry ${i + 1}/${maxRetries} after ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('Unreachable');
+}
 
 export function useCookingLoop() {
   const {
@@ -34,7 +54,7 @@ export function useCookingLoop() {
     playServeSound, 
     playSuccessSound, 
     playErrorSound 
-  } = useSoundEffects();
+  } = useSound();
   const abortRef = useRef(false);
 
   const runCookingLoop = useCallback(async (orderId: string) => {
@@ -54,6 +74,7 @@ export function useCookingLoop() {
     const conversationHistory: ConversationMessage[] = [];
     let currentInventory = [...inventory];
     let iterations = 0;
+    let noActionCount = 0;
     let servedDishName = '';
 
     try {
@@ -64,7 +85,7 @@ export function useCookingLoop() {
       while (!abortRef.current && iterations < MAX_ITERATIONS) {
         iterations++;
 
-        // 1. Call Cooking Agent
+        // 1. Call Cooking Agent with retry
         setAgentStatus('chef', 'thinking');
         setAgentThinking('chef', `Planning next step for ${order.dishName}...`);
 
@@ -76,10 +97,8 @@ export function useCookingLoop() {
             : 'Considering the next step...',
         });
 
-        const cookingResponse = await callCookingAgent(
-          currentInventory,
-          order,
-          conversationHistory
+        const cookingResponse = await callWithRetry(() => 
+          callCookingAgent(currentInventory, order, conversationHistory)
         );
 
         // Add thinking to timeline
@@ -91,9 +110,11 @@ export function useCookingLoop() {
           });
         }
 
-        // Check if no function call (unusual - might need to prompt again)
+        // Check if no function call
         if (!cookingResponse.functionCall) {
-          console.warn('No function call from cooking agent');
+          noActionCount++;
+          console.warn(`No function call from cooking agent (${noActionCount}/${MAX_NO_ACTION_ITERATIONS})`);
+          
           // Still record the thinking in history
           addConversationMessage({
             role: 'assistant',
@@ -103,13 +124,37 @@ export function useCookingLoop() {
             role: 'assistant',
             content: cookingResponse.thinking || '',
           });
+          
+          // Auto-complete if stuck
+          if (noActionCount >= MAX_NO_ACTION_ITERATIONS) {
+            console.log('Auto-completing due to no function calls');
+            const generatedIngredients = currentInventory.filter(i => i.isGenerated);
+            if (generatedIngredients.length > 0) {
+              servedDishName = generatedIngredients[generatedIngredients.length - 1].name;
+            } else {
+              servedDishName = order.dishName;
+            }
+            
+            addTimelineEvent({
+              type: 'serve',
+              agent: 'chef',
+              content: `Auto-serving: ${servedDishName}`,
+            });
+            
+            await playServeSound();
+            updateOrderStatus(orderId, 'served', servedDishName);
+            break;
+          }
+          
           continue;
         }
+
+        // Reset no-action counter on successful call
+        noActionCount = 0;
 
         const { name: actionName, ingredients: ingredientIds } = cookingResponse.functionCall;
 
         // Record assistant's thinking + action in history
-        // We format it as "thinking\n\nAction: action_name(ingredients)" so the AI knows what it did
         const assistantContent = `${cookingResponse.thinking || ''}\n\nAction taken: ${actionName}(${ingredientIds.join(', ')})`;
         addConversationMessage({
           role: 'assistant',
@@ -193,7 +238,9 @@ export function useCookingLoop() {
           }
         }
 
-        const alchemyResult = await callAlchemyAgent(actionName, usedIngredients);
+        const alchemyResult = await callWithRetry(() => 
+          callAlchemyAgent(actionName, usedIngredients)
+        );
 
         setAgentStatus('sous', 'acting');
         setAgentThinking('sous', alchemyResult.description);
@@ -274,7 +321,9 @@ export function useCookingLoop() {
           content: `Comparing "${servedDishName}" to order "${order.dishName}"...`,
         });
 
-        const judgeResult = await callJudgeAgent(servedDishName, order.dishName);
+        const judgeResult = await callWithRetry(() => 
+          callJudgeAgent(servedDishName, order.dishName)
+        );
 
         setAgentStatus('expeditor', 'acting');
 

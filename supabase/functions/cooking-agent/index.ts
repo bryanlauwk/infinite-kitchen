@@ -156,6 +156,56 @@ const tools = cookingTools.map(tool => ({
   }
 }));
 
+// Extract action from text content as fallback
+function extractActionFromText(content: string, inventory: any[]): { name: string; ingredients: string[] } | null {
+  // Try to match function call patterns in text
+  const patterns = [
+    /(\w+)\s*\(\s*\[(.*?)\]\s*\)/,  // action([ingredients])
+    /(\w+)\s*\(\s*(.*?)\s*\)/,       // action(ingredients)
+    /I'll\s+(\w+)\s+(?:the\s+)?(.+?)(?:\.|,|$)/i,  // I'll chop the onion
+    /Let me\s+(\w+)\s+(?:the\s+)?(.+?)(?:\.|,|$)/i,  // Let me chop the onion
+  ];
+  
+  for (const pattern of patterns) {
+    const match = content.match(pattern);
+    if (match) {
+      const actionName = match[1].toLowerCase();
+      // Check if it's a valid cooking action
+      if (cookingTools.some(t => t.name === actionName)) {
+        // Try to extract ingredients
+        let ingredientStr = match[2] || '';
+        let ingredients: string[] = [];
+        
+        // Try to parse as JSON array first
+        if (ingredientStr.includes('[') || ingredientStr.includes('"')) {
+          try {
+            ingredients = JSON.parse(`[${ingredientStr.replace(/'/g, '"')}]`);
+          } catch {
+            ingredients = ingredientStr.split(',').map(s => s.trim().replace(/['"]/g, ''));
+          }
+        } else {
+          // Extract ingredient IDs from natural language
+          ingredients = ingredientStr.split(/,|\s+and\s+/).map(s => {
+            const trimmed = s.trim().toLowerCase().replace(/^the\s+/, '');
+            // Try to find matching inventory item
+            const match = inventory.find(i => 
+              i.name.toLowerCase().includes(trimmed) || 
+              i.id.toLowerCase().includes(trimmed.replace(/\s+/g, '_'))
+            );
+            return match?.id || trimmed.replace(/\s+/g, '_');
+          }).filter(Boolean);
+        }
+        
+        if (ingredients.length > 0) {
+          return { name: actionName, ingredients };
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -188,6 +238,7 @@ RULES:
 4. When the dish is complete, call serve() with the final result
 5. Be creative but logical - the alchemy agent will determine what each action produces
 6. Think step by step and explain your reasoning briefly
+7. ALWAYS call a cooking function - never respond with just text
 
 IMPORTANT: Always use ingredient IDs (not names) in function calls.
 When you're done cooking, call serve() with the final dish ingredient.`;
@@ -205,8 +256,8 @@ When you're done cooking, call serve() with the final dish ingredient.`;
       { 
         role: "user", 
         content: hasHistory 
-          ? "Continue cooking. What's your next step based on the results so far?" 
-          : `Please cook: ${order.dishName}. Plan and execute step by step.`
+          ? "Continue cooking. What's your next step based on the results so far? You MUST call a cooking function." 
+          : `Please cook: ${order.dishName}. Plan and execute step by step. Call a cooking function now.`
       }
     ];
 
@@ -220,7 +271,7 @@ When you're done cooking, call serve() with the final dish ingredient.`;
         model: "google/gemini-3-flash-preview",
         messages,
         tools,
-        tool_choice: "auto",
+        tool_choice: "required", // Force a tool call
       }),
     });
 
@@ -261,7 +312,13 @@ When you're done cooking, call serve() with the final dish ingredient.`;
     if (toolCalls && toolCalls.length > 0) {
       const toolCall = toolCalls[0];
       const functionName = toolCall.function.name;
-      const args = JSON.parse(toolCall.function.arguments);
+      let args: { ingredients: string[] };
+      
+      try {
+        args = JSON.parse(toolCall.function.arguments);
+      } catch {
+        args = { ingredients: [] };
+      }
       
       return new Response(JSON.stringify({
         thinking,
@@ -275,7 +332,38 @@ When you're done cooking, call serve() with the final dish ingredient.`;
       });
     }
 
-    // No function call - might be thinking or done
+    // No function call - try to extract from text as fallback
+    console.warn("No tool call returned, attempting text extraction");
+    const extractedAction = extractActionFromText(thinking, inventory);
+    
+    if (extractedAction) {
+      console.log("Extracted action from text:", extractedAction);
+      return new Response(JSON.stringify({
+        thinking,
+        functionCall: extractedAction,
+        isComplete: extractedAction.name === "serve"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Last resort: auto-serve if we have created ingredients
+    const generatedIngredients = inventory.filter((i: any) => i.isGenerated);
+    if (generatedIngredients.length > 0) {
+      console.log("Auto-serving with last generated ingredient");
+      return new Response(JSON.stringify({
+        thinking: thinking + "\n\n[Auto-completing order]",
+        functionCall: {
+          name: 'serve',
+          ingredients: [generatedIngredients[generatedIngredients.length - 1].id]
+        },
+        isComplete: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // No function call and no fallback possible
     return new Response(JSON.stringify({
       thinking,
       functionCall: null,
