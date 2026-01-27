@@ -1,12 +1,7 @@
 import React from 'react';
-import { useSound } from '@/context/SoundContext';
-import { Button } from '@/components/ui/button';
-import { Volume2, VolumeX } from 'lucide-react';
 import headerIllustration from '@/assets/header-illustration.png';
 
 export const Header: React.FC = () => {
-  const { isEnabled, toggleSounds } = useSound();
-
   return (
     <header className="relative overflow-hidden border-b border-border">
       {/* Illustration background */}
@@ -29,15 +24,14 @@ export const Header: React.FC = () => {
           </p>
         </div>
         
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={toggleSounds}
-          className="gap-2 rounded-xl bg-background/80 backdrop-blur-sm"
+        <a 
+          href="https://www.bryanlauwk.fun"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          {isEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          Audio
-        </Button>
+          bryanlauwk.fun
+        </a>
       </div>
     </header>
   );
