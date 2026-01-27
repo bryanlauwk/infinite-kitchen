@@ -41,11 +41,27 @@ export function useSoundEffects() {
       );
 
       if (!response.ok) {
-        console.warn('SFX fetch failed:', response.status);
+        const errorText = await response.text();
+        console.warn('SFX fetch failed:', response.status, errorText);
+        return null;
+      }
+
+      // Verify we got audio, not JSON error
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const errorData = await response.json();
+        console.warn('SFX generation error:', errorData);
         return null;
       }
 
       const blob = await response.blob();
+      
+      // Validate audio size (sanity check)
+      if (blob.size < 1000) {
+        console.warn('SFX audio too small, likely failed:', blob.size, 'bytes');
+        return null;
+      }
+
       soundCache.set(cacheKey, blob);
       return blob;
     } catch (error) {
@@ -267,18 +283,29 @@ export function useSoundEffects() {
 function getActionDuration(action: string): number {
   const normalized = action.toLowerCase();
   
-  // Quick actions - shorter sounds
-  if (/crack|chop|dice|slice|zest|score|flip/.test(normalized)) {
+  // Cold/quick preparations (2 seconds)
+  if (/toss|combine|arrange|plate|drizzle|sprinkle|wash|clean|dry|assemble|layer/.test(normalized)) {
+    return 2;
+  }
+  if (/peel|core|hull|segment|pit|scoop|zest|squeeze|muddle|rinse/.test(normalized)) {
+    return 2;
+  }
+  if (/garnish|slice_fruit|mix_salad/.test(normalized)) {
     return 2;
   }
   
-  // Medium actions
-  if (/sear|saute|whisk|stir|fold|mix|blend/.test(normalized)) {
+  // Quick cutting actions (2 seconds)
+  if (/crack|chop|dice|slice|score|flip|season|press|trim|cut/.test(normalized)) {
+    return 2;
+  }
+  
+  // Medium actions (3 seconds)
+  if (/sear|saute|whisk|stir|fold|mix|blend|mash|scramble|beat/.test(normalized)) {
     return 3;
   }
   
-  // Longer continuous actions
-  if (/boil|simmer|roast|bake|braise|reduce/.test(normalized)) {
+  // Longer continuous actions (4 seconds)
+  if (/boil|simmer|roast|bake|braise|reduce|stew|fry|grill/.test(normalized)) {
     return 4;
   }
   

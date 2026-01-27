@@ -40,9 +40,9 @@ export const InventoryPanel: React.FC = () => {
         {/* Ingredients Panel */}
         <div className="border border-border rounded-lg p-4 bg-card">
           <div className="mb-3">
-            <h2 className="font-bold uppercase text-sm tracking-wide">Ingredients discovered so far</h2>
+            <h2 className="font-bold uppercase text-sm tracking-wide">Ingredients Found</h2>
             <p className="text-xs text-muted-foreground">
-              Base ingredients and items found while cooking
+              Things the kitchen seems to know now.
             </p>
           </div>
           
@@ -80,9 +80,9 @@ export const InventoryPanel: React.FC = () => {
         {/* Techniques Panel */}
         <div className="border border-border rounded-lg p-4 bg-card">
           <div className="mb-3">
-            <h2 className="font-bold uppercase text-sm tracking-wide">Techniques Observed</h2>
+            <h2 className="font-bold uppercase text-sm tracking-wide">Techniques</h2>
             <p className="text-xs text-muted-foreground">
-              Kitchen methods available
+              Ways the kitchen behaves.
             </p>
           </div>
           

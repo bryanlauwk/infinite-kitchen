@@ -65,6 +65,18 @@ serve(async (req) => {
 
     const audioBuffer = await response.arrayBuffer();
 
+    // Validate audio size (empty or too small = failed generation)
+    if (audioBuffer.byteLength < 1000) {
+      console.error('Audio response too small, likely failed generation:', audioBuffer.byteLength, 'bytes');
+      return new Response(
+        JSON.stringify({ error: 'Sound generation failed - audio too short' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     return new Response(audioBuffer, {
       headers: {
         ...corsHeaders,
