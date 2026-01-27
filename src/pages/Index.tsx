@@ -12,6 +12,7 @@ import { DishesArchive } from '@/components/kitchen/DishesArchive';
 import { KitchenProvider } from '@/context/KitchenContext';
 import { AgentProvider } from '@/context/AgentContext';
 import { SoundProvider } from '@/context/SoundContext';
+import { IllustrationProvider } from '@/context/IllustrationContext';
 
 const KitchenContent: React.FC = () => {
   const { orders } = useKitchen();
@@ -57,13 +58,15 @@ const KitchenContent: React.FC = () => {
 
 const Index: React.FC = () => {
   return (
-    <SoundProvider>
-      <KitchenProvider>
-        <AgentProvider>
-          <KitchenContent />
-        </AgentProvider>
-      </KitchenProvider>
-    </SoundProvider>
+    <IllustrationProvider>
+      <SoundProvider>
+        <KitchenProvider>
+          <AgentProvider>
+            <KitchenContent />
+          </AgentProvider>
+        </KitchenProvider>
+      </SoundProvider>
+    </IllustrationProvider>
   );
 };
 
