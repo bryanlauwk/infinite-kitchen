@@ -53,15 +53,8 @@ interface KitchenProviderProps {
 }
 
 export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) => {
-  // Initialize with varied selection from all difficulty levels
-  const initialOrders = [
-    ...orderTemplates.filter(t => t.difficulty === 'beginner').slice(0, 1),
-    ...orderTemplates.filter(t => t.difficulty === 'easy').slice(0, 2),
-    ...orderTemplates.filter(t => t.difficulty === 'intermediate').slice(0, 2),
-    ...orderTemplates.filter(t => t.difficulty === 'hard').slice(0, 1),
-    ...orderTemplates.filter(t => t.difficulty === 'expert').slice(0, 1),
-    ...orderTemplates.filter(t => t.difficulty === 'legendary').slice(0, 1),
-  ].map(template => createOrder(template));
+  // Initialize with ALL dishes from all difficulty levels
+  const initialOrders = orderTemplates.map(template => createOrder(template));
   
   const [inventory, setInventory] = useState<Ingredient[]>([...baseIngredients]);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
