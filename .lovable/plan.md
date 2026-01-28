@@ -1,96 +1,87 @@
 
+# Improve Cold vs Hot Cooking Sound Effect Separation
 
-# Expand Southeast Asian Cuisine + Redesign Header Typography
+## Problem Analysis
 
-## Overview
+The current sound system sometimes produces unrealistic audio by mixing heat-related sounds with cold preparation techniques. For example:
+- Making a fruit salad might produce sizzling sounds
+- Whisking a salad dressing could sound like pan-frying
+- Cold preparations like "toss" with proteins might add "sizzling" modifiers
 
-This plan addresses two tasks:
-1. **Add 26 Southeast Asian dishes** (Thai, Vietnamese, Indonesian) to the catalog
-2. **Redesign the header typography** to match the playful, illustrative aesthetic
+## Root Causes
 
----
-
-## Part 1: Southeast Asian Cuisine Expansion
-
-### New Dishes to Add (26 total)
-
-| Country | Easy | Intermediate | Hard | Expert | Legendary |
-|---------|------|--------------|------|--------|-----------|
-| **Thai** | Thai Iced Tea, Som Tam | Green Curry, Massaman Curry | Khao Soi, Moo Ping | Boat Noodles | Royal Thai Feast |
-| **Vietnamese** | Vietnamese Iced Coffee, Goi Cuon | Banh Mi, Bun Cha | Bun Bo Hue, Banh Xeo | Cha Ca La Vong | Vietnamese Wedding Feast |
-| **Indonesian** | Es Teh Manis, Gado Gado | Nasi Goreng, Mie Goreng, Soto Ayam | Ayam Bakar, Gudeg | Rawon, Bebek Betutu | Rijsttafel |
-
-### Updated Totals
-
-| Difficulty | Current | After |
-|------------|---------|-------|
-| Beginner | 8 | 8 |
-| Easy | 14 | 20 (+6) |
-| Intermediate | 18 | 25 (+7) |
-| Hard | 16 | 22 (+6) |
-| Expert | 13 | 17 (+4) |
-| Legendary | 10 | 13 (+3) |
-| **Total** | **79** | **105** |
+1. **Incomplete cold technique list** - Many cold prep actions are not in the `coldTechniques` set
+2. **Heat-contaminated ingredient modifiers** - Words like "sizzling", "crisping" appear in ingredient modifiers
+3. **Missing cold-specific ingredient modifiers** - No dedicated sounds for cold ingredient contexts
+4. **No ingredient temperature awareness** - The system doesn't consider if ingredients are being used in cold vs hot contexts
 
 ---
 
-## Part 2: Header Typography Redesign
+## Solution Overview
 
-### Current Issues
-- The title "INFINITE KITCHEN" uses standard bold text that feels generic
-- The tagline uses plain muted-foreground styling
-- The overall header feels disconnected from the warm, playful illustration style used elsewhere
+Enhance the sound system with a clear separation between "thermal zones":
+- **Hot Zone**: Heat-based techniques (fry, grill, sauté, etc.)
+- **Cold Zone**: Cold preparations (wash, toss, arrange, etc.)
+- **Neutral Zone**: Techniques that could be either (whisk, mix, blend)
 
-### Design Direction
-Following the "neal.fun-like" aesthetic and the established "Nunito + Space Mono" typography system:
-
-1. **Title Treatment**: Larger, more expressive display typography using Nunito (the rounded display font)
-2. **Tagline**: Observational, slightly ambiguous language (per the aesthetic philosophy)
-3. **Visual Warmth**: Add subtle decorative elements or color accents
-4. **Hierarchy**: Create clearer visual separation between title and tagline
-
-### New Header Design
-
-```text
-+----------------------------------------------------------+
-|                                                          |
-|   INFINITE KITCHEN                          [Audio 🔊]   |
-|   Where ingredients become possibilities                 |
-|                                                          |
-+----------------------------------------------------------+
-```
-
-**Typography Changes**:
-- Title: `text-3xl md:text-4xl font-display font-black tracking-tighter` (uses Nunito)
-- Tagline: Warmer, more poetic phrasing without explicit descriptions
-- Add subtle gradient or accent color to title for visual interest
-
-### New Copy Options (following neal.fun aesthetic - observational, no exclamation marks)
-- "Where ingredients become possibilities"
-- "Things happen here. Meals, mostly"
-- "The kitchen knows what you need"
-- "Ingredients have ideas"
+For neutral techniques, use ingredient context to determine which zone applies.
 
 ---
 
 ## Implementation Details
 
-### File 1: `src/data/orders.ts`
+### File: `src/lib/sounds.ts`
 
-Add 26 new Southeast Asian dishes organized by difficulty level.
+**1. Expand the `coldTechniques` set**
 
-### File 2: `src/components/kitchen/Header.tsx`
+Add missing cold preparation techniques:
+- `chop`, `dice`, `slice`, `mince`, `julienne`, `cube` (cutting is typically cold)
+- `shred`, `grate`, `fillet`, `debone`, `trim`
+- `marinate`, `brine`, `pickle`, `soak`
+- `stuff`, `roll`, `shape`
+- `strain`, `drain`, `sift`
+- `chill`, `freeze`, `thaw`, `room_temp`, `ice_bath`, `cool`
 
-Redesign the header component:
-- Use `font-display` class for the title (triggers Nunito font)
-- Increase title size to `text-3xl md:text-4xl`
-- Add `tracking-tighter` for more compact, impactful title
-- Update tagline with warmer, more observational copy
-- Consider subtle color accent on title
+**2. Create a `hotTechniques` set**
 
-### File 3: `src/components/kitchen/HeroBanner.tsx`
+Explicitly define heat-based techniques:
+- `fry`, `saute`, `sear`, `grill`, `roast`, `bake`, `broil`, `braise`
+- `boil`, `simmer`, `steam`, `poach`, `blanch`, `stew`
+- `deep_fry`, `pan_fry`, `stir_fry`, `flash_fry`, `tempura`
+- `flambe`, `smoke`, `char`, `toast`, `brown`, `crisp`, `render`
+- `reduce`, `caramelize`, `deglaze`, `melt`
 
-Update the hero banner copy to match the refined aesthetic (currently has slightly awkward phrasing).
+**3. Split ingredient modifiers by temperature context**
+
+Create two separate modifier maps:
+- `hotIngredientModifiers`: Heat-specific descriptions ("sizzling", "crisping", "browning")
+- `coldIngredientModifiers`: Cold-specific descriptions ("crisp", "fresh", "chilled")
+
+**4. Update `getSoundPrompt()` function**
+
+Logic flow:
+1. Check if technique is in `hotTechniques` → use hot modifiers only
+2. Check if technique is in `coldTechniques` → use cold modifiers only  
+3. For neutral techniques → analyze ingredients to determine context
+4. Never mix hot modifiers with cold techniques
+
+**5. Add ingredient temperature inference**
+
+Create helper function to detect if ingredients suggest cold preparation:
+- Fruits (strawberry, mango, etc.) → likely cold
+- Raw salad vegetables (lettuce, cucumber) → likely cold
+- Proteins + heat technique → likely hot
+
+---
+
+### File: `src/hooks/useSoundEffects.ts`
+
+**Update `getActionDuration()` function**
+
+Refine duration logic to consider cold vs hot:
+- Cold preparations are generally quicker and quieter (2 seconds)
+- Hot techniques need longer for realistic sizzle/bubble sounds (3-4 seconds)
+- Neutral techniques get medium duration (2-3 seconds)
 
 ---
 
@@ -98,16 +89,15 @@ Update the hero banner copy to match the refined aesthetic (currently has slight
 
 | File | Changes |
 |------|---------|
-| `src/data/orders.ts` | Add 26 Southeast Asian dish templates |
-| `src/components/kitchen/Header.tsx` | Redesign typography, update copy |
-| `src/components/kitchen/HeroBanner.tsx` | Refine banner copy to match aesthetic |
+| `src/lib/sounds.ts` | Add `hotTechniques` set, expand `coldTechniques`, split ingredient modifiers, update `getSoundPrompt()` with temperature-aware logic |
+| `src/hooks/useSoundEffects.ts` | Refine duration calculation for cold/hot/neutral techniques |
 
 ---
 
-## Notes
+## Expected Outcome
 
-- All new dishes use authentic local names (e.g., "Goi Cuon" not "Spring Rolls")
-- Typography uses established Nunito (display) + Space Mono (body) system
-- Copy follows "observational, slightly ambiguous" language guidelines
-- Filter dropdown will automatically update with new dish counts
-
+After implementation:
+- Fruit salads will have soft, crisp cutting and gentle tossing sounds
+- Grilled steaks will have proper sizzling and charring sounds
+- Whisking will sound different for cold dressings vs hot sauces
+- No more jarring "sizzling onion" sounds when making a cold salad
