@@ -62,7 +62,7 @@ const CompactChefRow: React.FC<{
 
 export const ChefsSection: React.FC = () => {
   const { agents } = useAgents();
-  const [isCompact, setIsCompact] = useState(false);
+  const [isCompact, setIsCompact] = useState(true); // Compact by default
   const agentOrder: AgentType[] = ['chef', 'sous', 'expeditor'];
   
   return (
