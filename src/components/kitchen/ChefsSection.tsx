@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAgents } from '@/context/AgentContext';
 import { AgentType } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
 import { ChefAvatar } from './ChefAvatar';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const chefProfiles: Record<AgentType, { 
   title: string; 
@@ -28,20 +28,78 @@ const chefProfiles: Record<AgentType, {
   },
 };
 
+// Compact view row component
+const CompactChefRow: React.FC<{
+  type: AgentType;
+  agent: { status: string; currentThinking?: string };
+  profile: { title: string; gradientClass: string };
+}> = ({ type, agent, profile }) => {
+  const isActive = agent.status === 'thinking' || agent.status === 'acting';
+  
+  return (
+    <div className={cn(
+      "flex items-center gap-3 p-2 rounded-xl border transition-all",
+      profile.gradientClass,
+      isActive && "ring-2 ring-processing/40"
+    )}>
+      <div className="relative flex-shrink-0">
+        <ChefAvatar agentType={type} isActive={isActive} className="w-10 h-10" />
+        {isActive && (
+          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-processing rounded-full animate-pulse border-2 border-background" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="text-xs font-medium">{profile.title}</span>
+        {isActive && agent.currentThinking ? (
+          <p className="text-[10px] text-processing truncate">{agent.currentThinking}</p>
+        ) : (
+          <p className="text-[10px] text-muted-foreground/60 italic">Idle</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const ChefsSection: React.FC = () => {
   const { agents } = useAgents();
+  const [isCompact, setIsCompact] = useState(false);
   const agentOrder: AgentType[] = ['chef', 'sous', 'expeditor'];
   
   return (
     <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
-      <div className="mb-3 flex-shrink-0">
-        <h2 className="font-bold uppercase text-sm tracking-wide">The Chefs of Reality</h2>
-        <p className="text-xs text-muted-foreground">
-          Three function callers, one purpose.
-        </p>
+      <div className="mb-3 flex-shrink-0 flex items-center justify-between">
+        <div>
+          <h2 className="font-bold uppercase text-sm tracking-wide">The Chefs of Reality</h2>
+          <p className="text-xs text-muted-foreground">
+            Three function callers, one purpose.
+          </p>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-7 w-7"
+          onClick={() => setIsCompact(!isCompact)}
+          title={isCompact ? "Expand view" : "Compact view"}
+        >
+          {isCompact ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </Button>
       </div>
       
-      <div className="flex-1 grid grid-cols-1 gap-3">
+      {isCompact ? (
+        // Compact view - horizontal list
+        <div className="flex-1 flex flex-col gap-2">
+          {agentOrder.map(type => (
+            <CompactChefRow
+              key={type}
+              type={type}
+              agent={agents[type]}
+              profile={chefProfiles[type]}
+            />
+          ))}
+        </div>
+      ) : (
+        // Full view - vertical cards
+        <div className="flex-1 grid grid-cols-1 gap-3">
           {agentOrder.map(type => {
             const agent = agents[type];
             const profile = chefProfiles[type];
@@ -86,6 +144,7 @@ export const ChefsSection: React.FC = () => {
             );
           })}
         </div>
-      </div>
+      )}
+    </div>
   );
 };

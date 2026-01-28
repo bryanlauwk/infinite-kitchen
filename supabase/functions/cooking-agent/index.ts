@@ -205,6 +205,85 @@ function detectCuisine(dishName: string): CuisineInfo {
   return { type: 'generic', region: 'other', hints: ['Focus on fundamental cooking techniques', 'Balance flavors: salt, acid, fat, heat'] };
 }
 
+// Recipe pattern guidance for simple dishes to increase success rate
+const beginnerPatterns: Record<string, string> = {
+  'cheese plate': 'slice(cheese) → plate([sliced_cheese]) → serve([plated_cheese])',
+  'sliced apple': 'slice(apple) → plate([sliced_apple]) → serve([plated_apple])',
+  'buttered bread': 'slice(bread) → spread(butter on sliced_bread) → plate → serve',
+  'glass of milk': 'plate(milk) → serve([plated_milk])',
+  'fresh orange juice': 'crush(orange) → strain → plate → serve',
+  'orange juice': 'crush(orange) → strain → plate → serve',
+  'mixed nuts': 'mix([nuts from inventory]) → plate → serve',
+  'fruit bowl': 'slice(fruits) → mix → plate → serve',
+  'fruit salad': 'slice(fruits) → mix → plate → serve',
+  'toast': 'toast(bread) → plate → serve',
+  'toast with jam': 'toast(bread) → spread(jam) → plate → serve',
+  'salad': 'chop(lettuce, vegetables) → mix → plate → serve',
+  'green salad': 'chop(lettuce) → mix → drizzle(olive_oil) → plate → serve',
+};
+
+const easyPatterns: Record<string, string> = {
+  'fried egg': 'crack(egg) → pan_fry → season(salt, pepper) → plate → serve',
+  'fried eggs': 'crack(egg) → pan_fry → season(salt, pepper) → plate → serve',
+  'scrambled eggs': 'crack(egg) → whisk → pan_fry(with stirring) → season → plate → serve',
+  'boiled egg': 'boil(egg) → plate → serve',
+  'grilled cheese': 'slice(bread, cheese) → assemble → pan_fry → plate → serve',
+  'grilled cheese sandwich': 'slice(bread, cheese) → assemble → pan_fry → plate → serve',
+  'avocado toast': 'toast(bread) → mash(avocado) → spread on toast → season → plate → serve',
+  'caprese salad': 'slice(tomato, mozzarella) → arrange with basil → drizzle(olive_oil) → plate → serve',
+  'boiled rice': 'rinse(rice) → boil(rice, water) → drain → plate → serve',
+  'steamed rice': 'rinse(rice) → steam(rice, water) → plate → serve',
+  'mashed potatoes': 'peel(potato) → boil → mash → mix(butter) → season → plate → serve',
+  'guacamole': 'mash(avocado) → mix(with lime, salt, onion) → plate → serve',
+  'omelette': 'crack(egg) → whisk → pan_fry → fold → plate → serve',
+  'pancakes': 'mix(flour, egg, milk) → pan_fry → plate → serve',
+  'french toast': 'crack(egg) → whisk → soak(bread) → pan_fry → plate → serve',
+  'bacon': 'pan_fry(bacon) → plate → serve',
+  'sauteed vegetables': 'chop(vegetables) → saute → season → plate → serve',
+};
+
+function getRecipeGuidance(dishName: string, difficulty: string): string {
+  const normalizedName = dishName.toLowerCase();
+  
+  // Check for beginner pattern match
+  for (const [dish, pattern] of Object.entries(beginnerPatterns)) {
+    if (normalizedName.includes(dish)) {
+      return `\n\nRECIPE GUIDANCE (RECOMMENDED PATTERN):
+${pattern}
+IMPORTANT: This is a simple dish. Follow this pattern closely - do NOT overcomplicate.
+The final served dish name should match or closely resemble "${dishName}".`;
+    }
+  }
+  
+  // Check for easy pattern match
+  for (const [dish, pattern] of Object.entries(easyPatterns)) {
+    if (normalizedName.includes(dish)) {
+      return `\n\nRECIPE GUIDANCE (SUGGESTED APPROACH):
+${pattern}
+TIP: Keep it simple. 3-4 essential steps. The dish name should match "${dishName}".`;
+    }
+  }
+  
+  // No specific pattern - return general guidance based on difficulty
+  if (difficulty === 'beginner') {
+    return `\n\nRECIPE GUIDANCE:
+This is a BEGINNER dish. Keep it extremely simple:
+- 1-2 cooking actions maximum
+- Then plate() and serve()
+- Do NOT overcomplicate with unnecessary transformations
+- The served dish should match the order name closely`;
+  } else if (difficulty === 'easy') {
+    return `\n\nRECIPE GUIDANCE:
+This is an EASY dish. Focus on essentials:
+- 3-4 cooking steps maximum
+- Standard cooking techniques
+- Then plate() and serve()
+- Avoid overcomplicating the dish`;
+  }
+  
+  return ''; // No special guidance for harder dishes
+}
+
 // Convert to Gemini tool format
 const tools = cookingTools.map(tool => ({
   type: "function" as const,
@@ -381,12 +460,15 @@ Consider this feedback carefully when planning your cooking approach.`;
 ${cuisineContext.hints.map((hint: string) => `- ${hint}`).join('\n')}`;
     }
 
+    // Get recipe guidance for simple dishes
+    const recipeGuidance = getRecipeGuidance(order.dishName, order.difficulty || 'intermediate');
+
     const systemPrompt = `You are a master chef AI that cooks dishes by calling cooking functions.
 
 CURRENT INVENTORY:
 ${inventoryList}
 
-ORDER TO FULFILL: ${order.emoji} ${order.dishName}${cuisineGuidance}${previousAttemptsContext}${customerFeedbackContext}
+ORDER TO FULFILL: ${order.emoji} ${order.dishName}${cuisineGuidance}${recipeGuidance}${previousAttemptsContext}${customerFeedbackContext}
 
 RULES:
 1. You can ONLY use ingredients from the inventory above
@@ -396,10 +478,12 @@ RULES:
 5. Be creative but logical - the alchemy agent will determine what each action produces
 6. Think step by step and explain your reasoning briefly
 7. ALWAYS call a cooking function - never respond with just text
-${cuisineContext.type !== 'generic' ? `8. Apply authentic ${cuisineContext.type} cooking techniques for best results` : ''}
+8. For beginner/easy dishes: FOLLOW THE RECIPE GUIDANCE CLOSELY - do not overcomplicate
+${cuisineContext.type !== 'generic' ? `9. Apply authentic ${cuisineContext.type} cooking techniques for best results` : ''}
 
 IMPORTANT: Always use ingredient IDs (not names) in function calls.
-When you're done cooking, call serve() with the final dish ingredient.`;
+When you're done cooking, call serve() with the final dish ingredient.
+For simple dishes, the served dish name MUST match or closely resemble the ordered dish.`;
 
     // Build messages - only add user prompt on first call
     const hasHistory = conversationHistory && conversationHistory.length > 0;
