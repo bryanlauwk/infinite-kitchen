@@ -9,6 +9,13 @@ import { toast } from 'sonner';
 
 const MAX_ITERATIONS = 20; // Safety limit
 const MAX_NO_ACTION_ITERATIONS = 3; // Auto-complete after this many empty responses
+const MAX_REPEAT_ACTIONS = 3; // Force progression after this many identical actions
+
+// Track actions to detect loops
+interface ActionRecord {
+  action: string;
+  ingredients: string[];
+}
 
 // Retry helper with exponential backoff
 async function callWithRetry<T>(
@@ -79,6 +86,8 @@ export function useCookingLoop() {
     let currentInventory = [...inventory];
     let iterations = 0;
     let noActionCount = 0;
+    let repeatActionCount = 0;
+    const actionHistory: ActionRecord[] = [];
     let servedDishName = '';
 
     try {
@@ -157,6 +166,56 @@ export function useCookingLoop() {
         noActionCount = 0;
 
         const { name: actionName, ingredients: ingredientIds } = cookingResponse.functionCall;
+
+        // Loop detection: check if this action was already performed
+        const currentAction: ActionRecord = {
+          action: actionName,
+          ingredients: [...ingredientIds].sort(),
+        };
+        
+        const isRepeat = actionHistory.some(prev =>
+          prev.action === currentAction.action &&
+          JSON.stringify(prev.ingredients) === JSON.stringify(currentAction.ingredients)
+        );
+        
+        if (isRepeat) {
+          repeatActionCount++;
+          console.warn(`Repeat action detected (${repeatActionCount}/${MAX_REPEAT_ACTIONS}): ${actionName}(${ingredientIds.join(', ')})`);
+          
+          if (repeatActionCount >= MAX_REPEAT_ACTIONS) {
+            // Force-serve the last generated ingredient
+            console.log('Max repeat actions reached, force-serving');
+            const generatedIngredients = currentInventory.filter(i => i.isGenerated);
+            if (generatedIngredients.length > 0) {
+              servedDishName = generatedIngredients[generatedIngredients.length - 1].name;
+            } else {
+              servedDishName = order.dishName;
+            }
+            
+            addTimelineEvent({
+              type: 'serve',
+              agent: 'chef',
+              content: `⚠️ Loop detected - Auto-serving: ${servedDishName}`,
+            });
+            
+            await playServeSound();
+            updateOrderStatus(orderId, 'served', servedDishName);
+            break;
+          }
+          
+          // Add anti-repeat instruction to conversation
+          const warningMessage = `WARNING: You already performed ${actionName} with these ingredients. Do NOT repeat this action. Try a DIFFERENT technique or combine with other ingredients. Progress to the next step.`;
+          conversationHistory.push({
+            role: 'user',
+            content: warningMessage,
+          });
+        } else {
+          repeatActionCount = 0;
+        }
+        
+        // Track this action
+        actionHistory.push(currentAction);
+        if (actionHistory.length > 5) actionHistory.shift();
 
         // Record assistant's thinking + action in history
         const assistantContent = `${cookingResponse.thinking || ''}\n\nAction taken: ${actionName}(${ingredientIds.join(', ')})`;
@@ -267,7 +326,16 @@ export function useCookingLoop() {
 
         // Only add to PERSISTENT inventory if it's a discovery (new base ingredient)
         if (alchemyResult.isDiscovery) {
-          addToInventory(newIngredient);
+          // Check if already exists before adding (addToInventory handles this, but let's be explicit)
+          const existsInInventory = inventory.some(i => i.id === newIngredient.id);
+          if (!existsInInventory) {
+            addToInventory(newIngredient);
+            
+            // Show discovery toast
+            toast.success(`New ingredient discovered: ${alchemyResult.emoji} ${alchemyResult.resultName}`, {
+              duration: 4000,
+            });
+          }
           
           addTimelineEvent({
             type: 'result',

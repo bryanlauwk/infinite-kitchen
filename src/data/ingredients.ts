@@ -17,6 +17,9 @@ export const ingredients: Ingredient[] = [
   { id: 'crab', name: 'crab', emoji: '🦀', category: 'proteins' },
   { id: 'lobster', name: 'lobster', emoji: '🦞', category: 'proteins' },
   { id: 'sausage', name: 'sausage', emoji: '🌭', category: 'proteins' },
+  // Southeast Asian Proteins
+  { id: 'pork_ribs', name: 'pork ribs', emoji: '🍖', category: 'proteins' },
+  { id: 'dried_shrimp', name: 'dried shrimp', emoji: '🦐', category: 'proteins' },
 
   // Vegetables (25)
   { id: 'spinach', name: 'spinach', emoji: '🥬', category: 'vegetables' },
@@ -104,6 +107,19 @@ export const ingredients: Ingredient[] = [
   { id: 'parsley', name: 'parsley', emoji: '🌿', category: 'spices' },
   { id: 'cilantro', name: 'cilantro', emoji: '🌿', category: 'spices' },
   { id: 'mint', name: 'mint', emoji: '🌿', category: 'spices' },
+  // Southeast Asian Spices
+  { id: 'star_anise', name: 'star anise', emoji: '⭐', category: 'spices' },
+  { id: 'cloves', name: 'cloves', emoji: '🫙', category: 'spices' },
+  { id: 'white_pepper', name: 'white pepper', emoji: '⚪', category: 'spices' },
+  { id: 'dang_gui', name: 'dang gui (angelica)', emoji: '🌿', category: 'spices' },
+  { id: 'cinnamon_stick', name: 'cinnamon stick', emoji: '🪵', category: 'spices' },
+  { id: 'five_spice_powder', name: 'five spice powder', emoji: '🫙', category: 'spices' },
+  // Southeast Asian Aromatics
+  { id: 'galangal', name: 'galangal', emoji: '🫚', category: 'vegetables' },
+  { id: 'lemongrass', name: 'lemongrass', emoji: '🌿', category: 'vegetables' },
+  { id: 'kaffir_lime_leaf', name: 'kaffir lime leaf', emoji: '🍃', category: 'vegetables' },
+  { id: 'pandan_leaf', name: 'pandan leaf', emoji: '🌿', category: 'vegetables' },
+  { id: 'shallot', name: 'shallot', emoji: '🧅', category: 'vegetables' },
 
   // Liquids (10)
   { id: 'olive_oil', name: 'olive oil', emoji: '🫒', category: 'liquids' },
@@ -126,6 +142,9 @@ export const ingredients: Ingredient[] = [
   { id: 'maple_syrup', name: 'maple syrup', emoji: '🍁', category: 'condiments' },
   { id: 'hot_sauce', name: 'hot sauce', emoji: '🌶️', category: 'condiments' },
   { id: 'pesto', name: 'pesto', emoji: '🌿', category: 'condiments' },
+  // Southeast Asian Sauces
+  { id: 'dark_soy_sauce', name: 'dark soy sauce', emoji: '🍶', category: 'condiments' },
+  { id: 'oyster_sauce', name: 'oyster sauce', emoji: '🦪', category: 'condiments' },
 
   // Nuts & Seeds (5)
   { id: 'almonds', name: 'almonds', emoji: '🥜', category: 'nuts' },

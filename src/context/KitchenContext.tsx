@@ -79,7 +79,14 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
 
   // Inventory functions
   const addToInventory = useCallback((ingredient: Ingredient) => {
-    setInventory(prev => [...prev, { ...ingredient, isGenerated: true }]);
+    setInventory(prev => {
+      // Check for duplicates - don't add if already exists
+      if (prev.some(i => i.id === ingredient.id)) {
+        console.log(`Ingredient ${ingredient.id} already exists, skipping duplicate`);
+        return prev;
+      }
+      return [...prev, { ...ingredient, isGenerated: true }];
+    });
   }, []);
 
   const resetInventory = useCallback(() => {
