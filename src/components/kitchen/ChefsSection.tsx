@@ -12,18 +12,18 @@ const chefProfiles: Record<AgentType, {
   gradientClass: string;
 }> = {
   chef: {
-    title: 'The Alchemist Unit',
-    quirk: 'Crafts transformation stages across arguments.',
+    title: 'Chef de Cuisine',
+    quirk: 'Analyzes orders and orchestrates cooking actions.',
     gradientClass: 'agent-gradient-alchemist',
   },
   sous: {
-    title: 'The Transmuter Core',
-    quirk: 'Converts raw states into refined outputs.',
+    title: 'Sous Chef',
+    quirk: 'Determines transformation outcomes for each action.',
     gradientClass: 'agent-gradient-transmuter',
   },
   expeditor: {
-    title: 'The Oracle Module',
-    quirk: 'Evaluates completion against expectations.',
+    title: 'Expeditor',
+    quirk: 'Validates served dishes against customer orders.',
     gradientClass: 'agent-gradient-oracle',
   },
 };

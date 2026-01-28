@@ -3,9 +3,12 @@ import { useKitchen } from '@/context/KitchenContext';
 import { renderStars, getCustomerAvatarForDish } from '@/lib/reviewGenerator';
 import { cn } from '@/lib/utils';
 import { DishIllustration } from './DishIllustration';
+import { Button } from '@/components/ui/button';
+import { RotateCcw } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 export const DishesArchive: React.FC = () => {
-  const { orders } = useKitchen();
+  const { orders, recookOrder } = useKitchen();
   
   // Only show served/verified/rejected dishes
   const completedDishes = orders.filter(
@@ -105,10 +108,27 @@ export const DishesArchive: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Rejected dishes don't get reviews */}
+                {/* Rejected dishes - show recook option */}
                 {dish.status === 'rejected' && !dish.review && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <span className="opacity-60">Something felt off.</span>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground opacity-60">
+                      Something felt off.
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => {
+                        recookOrder(dish.id);
+                        toast({
+                          title: "Dish returned to orders",
+                          description: `${dish.dishName} is ready for attempt #${(dish.recookCount || 0) + 2}`,
+                        });
+                      }}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Try Again
+                    </Button>
                   </div>
                 )}
               </div>
