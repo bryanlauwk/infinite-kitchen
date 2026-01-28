@@ -348,36 +348,67 @@ export function useSoundEffects() {
   };
 }
 
-// Determine appropriate sound duration based on action type
+// Determine appropriate sound duration based on action type and thermal zone
 function getActionDuration(action: string): number {
   const normalized = action.toLowerCase();
   
-  // Cold/quick preparations (2 seconds)
-  if (/toss|combine|arrange|plate|drizzle|sprinkle|wash|clean|dry|assemble|layer/.test(normalized)) {
+  // ===== COLD PREPARATIONS (2 seconds - quick, quiet) =====
+  // Washing/cleaning
+  if (/wash|rinse|clean|dry|drain/.test(normalized)) {
     return 2;
   }
-  if (/peel|core|hull|segment|pit|scoop|zest|squeeze|muddle|rinse/.test(normalized)) {
+  // Cold mixing/arranging
+  if (/toss|combine|arrange|plate|drizzle|sprinkle|assemble|layer|garnish/.test(normalized)) {
     return 2;
   }
-  if (/garnish|slice_fruit|mix_salad/.test(normalized)) {
+  // Fruit preparation
+  if (/peel|core|hull|segment|pit|scoop|zest|squeeze|muddle/.test(normalized)) {
+    return 2;
+  }
+  if (/slice_fruit|mix_salad|peel_fruit/.test(normalized)) {
+    return 2;
+  }
+  // Temperature control (cold)
+  if (/chill|freeze|thaw|room_temp|ice_bath|cool/.test(normalized)) {
+    return 2;
+  }
+  // Marinating/soaking
+  if (/marinate|brine|pickle|soak|cure/.test(normalized)) {
     return 2;
   }
   
-  // Quick cutting actions (2 seconds)
-  if (/crack|chop|dice|slice|score|flip|season|press|trim|cut/.test(normalized)) {
+  // ===== CUTTING (2 seconds - rhythmic but brief) =====
+  if (/crack|chop|dice|slice|score|flip|season|press|trim|cut|mince|julienne|cube|carve|fillet|debone|shred|grate/.test(normalized)) {
     return 2;
   }
   
-  // Medium actions (3 seconds)
-  if (/sear|saute|whisk|stir|fold|mix|blend|mash|scramble|beat/.test(normalized)) {
+  // ===== NEUTRAL/MIXING (3 seconds - medium) =====
+  if (/whisk|stir|fold|mix|blend|mash|beat|cream|emulsify|whip|aerate|puree|knead/.test(normalized)) {
+    return 3;
+  }
+  // Shaping/forming
+  if (/stuff|roll|shape|skewer|portion/.test(normalized)) {
+    return 3;
+  }
+  // Coating/breading
+  if (/coat|bread|batter|season/.test(normalized)) {
     return 3;
   }
   
-  // Longer continuous actions (4 seconds)
-  if (/boil|simmer|roast|bake|braise|reduce|stew|fry|grill/.test(normalized)) {
+  // ===== HOT TECHNIQUES (3-4 seconds - need time for sizzle) =====
+  // Quick hot (3 seconds)
+  if (/sear|saute|stir_fry|flash_fry|scramble|deglaze/.test(normalized)) {
+    return 3;
+  }
+  // Continuous hot (4 seconds - longer sizzle/bubble)
+  if (/boil|simmer|roast|bake|braise|reduce|stew|fry|grill|deep_fry|pan_fry|tempura/.test(normalized)) {
+    return 4;
+  }
+  // Intense heat (4 seconds)
+  if (/flambe|char|smoke|caramelize|render|broil/.test(normalized)) {
     return 4;
   }
   
-  // Default
+  // Default - medium duration
   return 3;
 }
