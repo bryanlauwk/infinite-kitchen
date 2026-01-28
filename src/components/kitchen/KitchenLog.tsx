@@ -58,19 +58,18 @@ export const KitchenLog: React.FC = () => {
   }, [timeline]);
   
   return (
-    <section className="px-6 py-4">
-      <div className="rounded-2xl overflow-hidden border border-border card-elevated">
-        {/* Header bar */}
-        <div className="flex justify-between items-center px-4 py-2.5 bg-muted border-b border-border">
-          <h2 className="font-bold uppercase text-xs tracking-wide">Kitchen Log</h2>
-          <span className="text-[10px] text-muted-foreground font-mono">
-            count: {timeline.length.toString().padStart(4, '0')}
-          </span>
-        </div>
-        
-        {/* Terminal body */}
-        <div ref={scrollRef} className="terminal-bg">
-          <ScrollArea className="h-36">
+    <div className="rounded-2xl overflow-hidden border border-border card-elevated h-full flex flex-col">
+      {/* Header bar */}
+      <div className="flex justify-between items-center px-4 py-2.5 bg-muted border-b border-border flex-shrink-0">
+        <h2 className="font-bold uppercase text-xs tracking-wide">Kitchen Log</h2>
+        <span className="text-[10px] text-muted-foreground font-mono">
+          count: {timeline.length.toString().padStart(4, '0')}
+        </span>
+      </div>
+      
+      {/* Terminal body */}
+      <div ref={scrollRef} className="terminal-bg flex-1">
+        <ScrollArea className="h-full min-h-[200px]">
             <div className="p-4 font-mono text-sm">
             {timeline.length === 0 ? (
               <div className="terminal-text-muted italic">
@@ -109,9 +108,8 @@ export const KitchenLog: React.FC = () => {
                 </div>
               )}
             </div>
-          </ScrollArea>
-        </div>
+        </ScrollArea>
       </div>
-    </section>
+    </div>
   );
 };
