@@ -136,6 +136,75 @@ const cookingTools = [
   { name: "serve", description: "Present the finished dish to fulfill the order. This is the final action." },
 ];
 
+// Cuisine detection for context-aware cooking
+interface CuisineInfo {
+  type: string;
+  region: string;
+  hints: string[];
+}
+
+const cuisinePatterns: Record<string, { keywords: string[]; hints: string[] }> = {
+  malaysian: {
+    keywords: ['nasi lemak', 'laksa', 'char kway teow', 'rendang', 'satay', 'roti canai', 'mee goreng', 'ayam percik', 'sambal', 'belacan', 'nasi kandar', 'asam laksa', 'nasi kerabu'],
+    hints: ['Use coconut milk (santan) for richness', 'Sambal belacan is essential for authentic heat', 'Aromatics: lemongrass, galangal, kaffir lime leaves, pandan', 'Balance of sweet, sour, salty, and spicy']
+  },
+  thai: {
+    keywords: ['pad thai', 'tom yum', 'green curry', 'massaman', 'khao soi', 'som tam', 'pad kra pao', 'tom kha', 'panang', 'larb'],
+    hints: ['Balance of sweet, sour, salty, and spicy (four tastes)', 'Fish sauce (nam pla) is essential for umami', 'Fresh Thai basil, cilantro, and mint for garnish', 'Thai chilies for proper heat level']
+  },
+  vietnamese: {
+    keywords: ['pho', 'banh mi', 'goi cuon', 'bun bo hue', 'com tam', 'bun cha', 'banh xeo', 'cao lau', 'mi quang'],
+    hints: ['Fresh herbs are paramount: mint, Thai basil, cilantro', 'Fish sauce (nuoc mam) in everything', 'Light, clean flavors with minimal oil', 'Lime and fresh vegetables for brightness']
+  },
+  indonesian: {
+    keywords: ['nasi goreng', 'rendang', 'soto ayam', 'gado gado', 'rijsttafel', 'gudeg', 'bakso', 'satay', 'tempeh', 'sambal goreng'],
+    hints: ['Slow-cook rendang until dry and caramelized', 'Kecap manis (sweet soy sauce) is essential', 'Sambal varieties for heat', 'Galangal, turmeric, and candlenuts in spice pastes']
+  },
+  japanese: {
+    keywords: ['sushi', 'ramen', 'tempura', 'tonkatsu', 'teriyaki', 'udon', 'soba', 'yakitori', 'miso', 'gyoza'],
+    hints: ['Dashi (kelp and bonito) is the foundation', 'Mirin, sake, and soy sauce for seasoning', 'Precision and presentation matter', 'Fresh, high-quality ingredients']
+  },
+  korean: {
+    keywords: ['kimchi', 'bibimbap', 'bulgogi', 'samgyeopsal', 'japchae', 'tteokbokki', 'sundubu', 'galbi'],
+    hints: ['Gochujang and gochugaru for heat', 'Fermented ingredients: kimchi, doenjang', 'Sesame oil for fragrance', 'Marinating meat for tenderness']
+  },
+  chinese: {
+    keywords: ['dim sum', 'kung pao', 'mapo tofu', 'peking duck', 'chow mein', 'fried rice', 'dumplings', 'char siu'],
+    hints: ['Wok hei (high heat cooking) is essential', 'Light soy, dark soy, and oyster sauce', 'Ginger and scallion aromatics', 'Cornstarch for velveting proteins']
+  },
+  indian: {
+    keywords: ['curry', 'biryani', 'tikka masala', 'naan', 'samosa', 'dal', 'tandoori', 'korma', 'vindaloo'],
+    hints: ['Toast whole spices before grinding', 'Build layers of flavor with aromatics', 'Ghee for cooking', 'Yogurt for marinades']
+  },
+  french: {
+    keywords: ['croissant', 'coq au vin', 'bouillabaisse', 'ratatouille', 'quiche', 'souffle', 'crepe', 'beef bourguignon'],
+    hints: ['Butter and cream are essential', 'Mother sauces as foundation', 'Proper technique over speed', 'Deglaze with wine for sauces']
+  },
+  italian: {
+    keywords: ['pasta', 'pizza', 'risotto', 'lasagna', 'carbonara', 'bolognese', 'tiramisu', 'gnocchi'],
+    hints: ['Quality olive oil and fresh ingredients', 'Al dente pasta is crucial', 'Finish pasta in the sauce', 'Parmesan for finishing']
+  }
+};
+
+function detectCuisine(dishName: string): CuisineInfo {
+  const normalizedName = dishName.toLowerCase();
+  
+  for (const [cuisineType, { keywords, hints }] of Object.entries(cuisinePatterns)) {
+    for (const keyword of keywords) {
+      if (normalizedName.includes(keyword)) {
+        const regionMap: Record<string, string> = {
+          malaysian: 'southeast_asian', thai: 'southeast_asian', vietnamese: 'southeast_asian', indonesian: 'southeast_asian',
+          japanese: 'east_asian', korean: 'east_asian', chinese: 'east_asian',
+          indian: 'south_asian', french: 'european', italian: 'european'
+        };
+        return { type: cuisineType, region: regionMap[cuisineType] || 'other', hints };
+      }
+    }
+  }
+  
+  return { type: 'generic', region: 'other', hints: ['Focus on fundamental cooking techniques', 'Balance flavors: salt, acid, fat, heat'] };
+}
+
 // Convert to Gemini tool format
 const tools = cookingTools.map(tool => ({
   type: "function" as const,
@@ -224,16 +293,40 @@ serve(async (req) => {
       `${i.emoji} ${i.name} (id: ${i.id})`
     ).join(", ");
 
+    // Detect cuisine type for context-aware cooking
+    const cuisineContext = detectCuisine(order.dishName);
+
     // Build previous attempts context if recooking
     let previousAttemptsContext = "";
     if (order.previousAttempts && order.previousAttempts.length > 0) {
       previousAttemptsContext = `\n\nPREVIOUS ATTEMPTS (FAILED):
-${order.previousAttempts.map((attempt: { servedDish: string; reasoning: string }, i: number) => 
-  `- Attempt ${i + 1}: Served "${attempt.servedDish}" - Rejected because: ${attempt.reasoning}`
-).join("\n")}
+${order.previousAttempts.map((attempt: { servedDish: string; reasoning: string; customerFeedback?: string }, i: number) => {
+  let attemptText = `- Attempt ${i + 1}: Served "${attempt.servedDish}" - Rejected because: ${attempt.reasoning}`;
+  if (attempt.customerFeedback) {
+    attemptText += `\n  Customer feedback: "${attempt.customerFeedback}"`;
+  }
+  return attemptText;
+}).join("\n")}
 
 IMPORTANT: The previous attempt(s) were rejected. Try a DIFFERENT approach this time.
 Consider using different techniques, ingredient combinations, or cooking methods.`;
+    }
+
+    // Build customer feedback context
+    let customerFeedbackContext = "";
+    if (order.customerFeedback) {
+      customerFeedbackContext = `\n\nCUSTOMER FEEDBACK FOR THIS ATTEMPT:
+"${order.customerFeedback}"
+
+Consider this feedback carefully when planning your cooking approach.`;
+    }
+
+    // Build cuisine-specific guidance
+    let cuisineGuidance = "";
+    if (cuisineContext.type !== 'generic') {
+      const regionLabel = cuisineContext.region.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      cuisineGuidance = `\n\nCUISINE CONTEXT: ${cuisineContext.type.charAt(0).toUpperCase() + cuisineContext.type.slice(1)} (${regionLabel})
+${cuisineContext.hints.map((hint: string) => `- ${hint}`).join('\n')}`;
     }
 
     const systemPrompt = `You are a master chef AI that cooks dishes by calling cooking functions.
@@ -241,7 +334,7 @@ Consider using different techniques, ingredient combinations, or cooking methods
 CURRENT INVENTORY:
 ${inventoryList}
 
-ORDER TO FULFILL: ${order.emoji} ${order.dishName}${previousAttemptsContext}
+ORDER TO FULFILL: ${order.emoji} ${order.dishName}${cuisineGuidance}${previousAttemptsContext}${customerFeedbackContext}
 
 RULES:
 1. You can ONLY use ingredients from the inventory above
@@ -251,6 +344,7 @@ RULES:
 5. Be creative but logical - the alchemy agent will determine what each action produces
 6. Think step by step and explain your reasoning briefly
 7. ALWAYS call a cooking function - never respond with just text
+${cuisineContext.type !== 'generic' ? `8. Apply authentic ${cuisineContext.type} cooking techniques for best results` : ''}
 
 IMPORTANT: Always use ingredient IDs (not names) in function calls.
 When you're done cooking, call serve() with the final dish ingredient.`;

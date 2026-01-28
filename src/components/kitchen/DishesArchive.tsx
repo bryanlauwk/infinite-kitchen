@@ -1,19 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { renderStars, getCustomerAvatarForDish } from '@/lib/reviewGenerator';
 import { cn } from '@/lib/utils';
 import { DishIllustration } from './DishIllustration';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { RecookDialog } from './RecookDialog';
+import { Order } from '@/lib/types';
 
 export const DishesArchive: React.FC = () => {
   const { orders, recookOrder } = useKitchen();
+  const [dialogOrder, setDialogOrder] = useState<Order | null>(null);
+  const [isImprovement, setIsImprovement] = useState(false);
   
   // Only show served/verified/rejected dishes
   const completedDishes = orders.filter(
     order => order.status === 'served' || order.status === 'verified' || order.status === 'rejected'
   );
+  
+  const handleRecookClick = (order: Order, improvement: boolean = false) => {
+    setDialogOrder(order);
+    setIsImprovement(improvement);
+  };
+
+  const handleRecook = (feedback?: string) => {
+    if (!dialogOrder) return;
+    
+    recookOrder(dialogOrder.id, feedback);
+    toast({
+      title: feedback ? "Dish returned with feedback" : "Dish returned to orders",
+      description: `${dialogOrder.dishName} is ready for attempt #${(dialogOrder.recookCount || 0) + 2}`,
+    });
+    setDialogOrder(null);
+  };
   
   if (completedDishes.length === 0) {
     return null; // Don't show until first dish is completed
@@ -118,16 +138,28 @@ export const DishesArchive: React.FC = () => {
                       variant="secondary"
                       size="sm"
                       className="gap-1.5 text-xs"
-                      onClick={() => {
-                        recookOrder(dish.id);
-                        toast({
-                          title: "Dish returned to orders",
-                          description: `${dish.dishName} is ready for attempt #${(dish.recookCount || 0) + 2}`,
-                        });
-                      }}
+                      onClick={() => handleRecookClick(dish, false)}
                     >
                       <RotateCcw className="h-3 w-3" />
                       Try Again
+                    </Button>
+                  </div>
+                )}
+
+                {/* Low-confidence verified dishes - show improvement option */}
+                {dish.status === 'verified' && dish.improvable && (
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground opacity-60">
+                      Could be better.
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-xs text-processing hover:text-processing"
+                      onClick={() => handleRecookClick(dish, true)}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Request Improvement
                     </Button>
                   </div>
                 )}
@@ -136,6 +168,17 @@ export const DishesArchive: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Recook Dialog */}
+      {dialogOrder && (
+        <RecookDialog
+          order={dialogOrder}
+          open={!!dialogOrder}
+          onOpenChange={(open) => !open && setDialogOrder(null)}
+          onRecook={handleRecook}
+          isImprovement={isImprovement}
+        />
+      )}
     </section>
   );
 };

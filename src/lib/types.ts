@@ -64,6 +64,7 @@ export interface PreviousAttempt {
   servedDish: string;
   reasoning: string;
   timestamp: number;
+  customerFeedback?: string;
 }
 
 export interface Order {
@@ -78,6 +79,8 @@ export interface Order {
   review?: CustomerReview;
   recookCount?: number;
   previousAttempts?: PreviousAttempt[];
+  customerFeedback?: string;
+  improvable?: boolean;
 }
 
 export interface JudgeResult {
