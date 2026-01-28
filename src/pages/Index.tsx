@@ -52,11 +52,13 @@ const KitchenContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Chefs Section */}
-      <ChefsSection />
-      
-      {/* Kitchen Log */}
-      <KitchenLog />
+      {/* Chefs & Kitchen Log - Side by Side */}
+      <div className="px-6 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+          <ChefsSection />
+          <KitchenLog />
+        </div>
+      </div>
       
       {/* Dishes Archive */}
       <DishesArchive />

@@ -33,16 +33,15 @@ export const ChefsSection: React.FC = () => {
   const agentOrder: AgentType[] = ['chef', 'sous', 'expeditor'];
   
   return (
-    <section className="px-6 py-4">
-      <div className="border border-border rounded-2xl p-4 bg-card card-elevated">
-        <div className="mb-4">
-          <h2 className="font-bold uppercase text-sm tracking-wide">The Chefs of Reality</h2>
-          <p className="text-xs text-muted-foreground">
-            Three function callers, one purpose.
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
+      <div className="mb-3 flex-shrink-0">
+        <h2 className="font-bold uppercase text-sm tracking-wide">The Chefs of Reality</h2>
+        <p className="text-xs text-muted-foreground">
+          Three function callers, one purpose.
+        </p>
+      </div>
+      
+      <div className="flex-1 grid grid-cols-1 gap-3">
           {agentOrder.map(type => {
             const agent = agents[type];
             const profile = chefProfiles[type];
@@ -83,20 +82,10 @@ export const ChefsSection: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Action Button */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full gap-2 text-xs rounded-xl bg-background/50"
-                >
-                  <Eye className="h-3 w-3" />
-                  Observe
-                </Button>
               </div>
             );
           })}
         </div>
       </div>
-    </section>
   );
 };
