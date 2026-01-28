@@ -160,72 +160,217 @@ export const techniqueSounds: Record<string, string> = {
   serve: "plate sliding onto pass, chef calling order up, kitchen bell ding",
 };
 
-// Ingredient-specific sound modifiers
-// These add context when specific ingredients are being used
-export const ingredientSoundModifiers: Record<string, string> = {
-  // Proteins
-  egg: "egg cracking and sizzling",
-  chicken: "poultry skin crisping",
-  beef: "rich beef searing",
-  pork: "pork fat rendering",
-  fish: "delicate fish skin crisping",
-  shrimp: "quick shrimp sizzle",
+// ===== THERMAL ZONE CLASSIFICATION =====
+
+// Hot techniques - require heat-related sound modifiers
+const hotTechniques = new Set([
+  // Direct heat
+  'fry', 'saute', 'sear', 'grill', 'roast', 'bake', 'broil', 'braise',
+  'pan_fry', 'deep_fry', 'shallow_fry', 'stir_fry', 'flash_fry', 'tempura',
+  // Liquid heat
+  'boil', 'simmer', 'steam', 'poach', 'blanch', 'stew', 'reduce',
+  // High heat finishing
+  'flambe', 'smoke', 'char', 'toast', 'brown', 'crisp', 'render',
+  'caramelize', 'deglaze', 'melt', 'glaze',
+  // Egg/protein heat
+  'scramble',
+]);
+
+// Cold techniques - NEVER get heat-related modifiers
+const coldTechniques = new Set([
+  // Cutting (all cutting is cold)
+  'chop', 'dice', 'slice', 'mince', 'julienne', 'cube', 'cut',
+  'shred', 'grate', 'fillet', 'debone', 'trim', 'carve', 'score',
+  // Fruit/veg prep
+  'peel', 'core', 'hull', 'pit', 'segment', 'scoop', 'zest', 'peel_fruit',
+  'slice_fruit', 'crack', 'squeeze',
+  // Cold mixing
+  'toss', 'combine', 'assemble', 'arrange', 'layer', 'mix_salad',
+  // Washing/cleaning
+  'wash', 'rinse', 'clean', 'dry', 'drain', 'strain', 'sift',
+  // Marinating/soaking (cold liquid)
+  'marinate', 'brine', 'pickle', 'soak', 'cure',
+  // Shaping (cold)
+  'stuff', 'roll', 'shape', 'skewer', 'portion', 'separate',
+  // Temperature control (cold)
+  'chill', 'freeze', 'thaw', 'room_temp', 'ice_bath', 'cool',
+  // Finishing (no heat)
+  'garnish', 'plate', 'drizzle', 'sprinkle', 'rest',
+  // Other cold
+  'muddle', 'extract', 'prep', 'prepare',
+]);
+
+// Neutral techniques - depends on ingredient context
+const neutralTechniques = new Set([
+  'whisk', 'stir', 'blend', 'mix', 'fold', 'beat', 'cream',
+  'emulsify', 'whip', 'aerate', 'puree', 'mash', 'knead',
+  'coat', 'bread', 'batter', 'season', 'grind', 'press',
+  'crush', 'pound', 'tenderize',
+]);
+
+// ===== INGREDIENT MODIFIERS BY THERMAL ZONE =====
+
+// Hot ingredient modifiers - use ONLY with hot techniques
+const hotIngredientModifiers: Record<string, string> = {
+  // Proteins (sizzling/browning)
+  egg: "egg sizzling and setting",
+  chicken: "poultry skin crisping and browning",
+  beef: "beef searing with rich maillard crust",
+  pork: "pork fat rendering and crackling",
+  fish: "fish skin crisping delicately",
+  shrimp: "shrimp turning pink and sizzling",
   bacon: "bacon strips crackling and popping",
   
-  // Vegetables
-  onion: "onion sizzling and softening",
-  garlic: "garlic becoming aromatic",
-  potato: "starchy potato cooking",
-  pepper: "peppers charring",
-  mushroom: "mushrooms releasing moisture",
+  // Vegetables (caramelizing)
+  onion: "onion sizzling and caramelizing",
+  garlic: "garlic sizzling and becoming aromatic",
+  potato: "potato browning and crisping",
+  pepper: "peppers charring and blistering",
+  mushroom: "mushrooms releasing moisture and browning",
   
-  // Liquids
+  // Liquids (bubbling/steaming)
   wine: "wine deglazing with steam burst",
-  butter: "butter foam and sizzle",
+  butter: "butter foaming and sizzling",
   oil: "oil shimmering in hot pan",
-  cream: "cream bubbling and thickening",
-  stock: "savory stock simmering",
+  cream: "cream bubbling and reducing",
+  stock: "stock simmering and reducing",
   
   // Grains
-  rice: "rice grains absorbing liquid",
-  pasta: "pasta bubbling in water",
-  bread: "bread crust crackling",
+  rice: "rice grains sizzling before absorbing liquid",
+  pasta: "pasta bubbling in boiling water",
+  bread: "bread toasting and crisping",
   
   // Aromatics
-  herbs: "fresh herbs releasing fragrance",
-  spices: "spices toasting aromatically",
+  herbs: "herbs sizzling and releasing oils",
+  spices: "spices toasting and becoming aromatic",
 };
 
-// Background ambient kitchen sounds
-// These loop continuously during cooking
-export const ambiencePrompts = {
-  // Main kitchen ambience - bustling, realistic
-  kitchen: "busy professional restaurant kitchen ambience with chefs calling orders, pots clanking, distant sizzling, ventilation hum, occasional plate sounds, kitchen staff working efficiently",
+// Cold ingredient modifiers - use ONLY with cold techniques
+const coldIngredientModifiers: Record<string, string> = {
+  // Proteins (raw/cold)
+  egg: "egg cracking crisply",
+  chicken: "raw chicken being trimmed",
+  beef: "raw beef being sliced",
+  pork: "pork being portioned",
+  fish: "fresh fish being filleted",
+  shrimp: "shrimp shells being removed",
   
-  // Alternative ambiences for variety
-  morning: "calm morning kitchen with coffee brewing, eggs frying gently, quiet preparation sounds",
-  rush: "intense dinner rush kitchen with multiple burners going, urgent calls, rapid plating",
-  quiet: "peaceful home kitchen with single pan cooking, subtle ambient hum",
+  // Vegetables (fresh/crisp)
+  onion: "crisp onion layers separating",
+  garlic: "garlic cloves being peeled",
+  potato: "starchy potato being cut",
+  pepper: "crisp pepper being sliced",
+  mushroom: "fresh mushroom being sliced",
+  lettuce: "crisp lettuce leaves rustling",
+  cucumber: "fresh cucumber being sliced",
+  tomato: "ripe tomato being cut, juice releasing",
+  carrot: "crisp carrot snapping",
+  celery: "celery stalks crunching",
+  
+  // Fruits (fresh/juicy)
+  apple: "crisp apple being sliced",
+  strawberry: "soft strawberry being hulled",
+  mango: "ripe mango flesh being scooped",
+  citrus: "citrus being segmented, juice spraying",
+  lemon: "lemon being squeezed, juice flowing",
+  lime: "lime being cut, fresh citrus aroma",
+  orange: "orange being peeled, segments separating",
+  berry: "delicate berries being handled gently",
+  banana: "banana being peeled and sliced",
+  melon: "melon being scooped",
+  grape: "grapes being plucked from stem",
+  pineapple: "pineapple being cored",
+  peach: "soft peach being sliced",
+  avocado: "avocado being scooped",
+  
+  // Liquids (pouring/drizzling)
+  wine: "wine being poured into marinade",
+  butter: "cold butter being cut",
+  oil: "oil being drizzled",
+  cream: "cream being poured",
+  vinegar: "vinegar splashing into bowl",
+  
+  // Herbs (fresh)
+  herbs: "fresh herbs being picked and torn",
+  basil: "basil leaves being torn",
+  mint: "fresh mint being muddled",
+  
+  // Dairy
+  cheese: "cheese being grated or sliced",
+  milk: "milk being poured",
 };
 
-// UI and event sounds
-export const uiSounds = {
-  orderReceived: "restaurant ticket printer printing new order, paper ripping",
-  serve: "service bell ding with plate sliding onto pass",
-  success: "satisfied chef hmm with soft positive chime",
-  error: "kitchen timer urgent beeping alert",
-  start: "gas burner igniting with click and whoosh",
-  complete: "order complete with gentle triumphant tone",
-};
-
-// Cold techniques that should NOT get heat-related ingredient modifiers
-const coldTechniques = new Set([
-  'toss', 'mix', 'combine', 'wash', 'rinse', 'peel', 'core',
-  'hull', 'pit', 'segment', 'scoop', 'assemble', 'arrange',
-  'clean', 'dry', 'garnish', 'plate', 'drizzle', 'sprinkle',
-  'slice_fruit', 'mix_salad', 'layer', 'peel_fruit', 'chill',
-  'squeeze', 'zest', 'muddle'
+// Ingredients that suggest cold preparation context
+const coldContextIngredients = new Set([
+  // Fruits
+  'strawberry', 'strawberries', 'mango', 'apple', 'pear', 'grape', 'grapes',
+  'melon', 'watermelon', 'cantaloupe', 'honeydew', 'pineapple', 'kiwi',
+  'banana', 'orange', 'lemon', 'lime', 'grapefruit', 'citrus',
+  'berry', 'berries', 'blueberry', 'blueberries', 'raspberry', 'raspberries',
+  'blackberry', 'blackberries', 'peach', 'plum', 'nectarine', 'apricot',
+  'cherry', 'cherries', 'pomegranate', 'fig', 'date', 'passionfruit',
+  // Salad vegetables
+  'lettuce', 'arugula', 'spinach', 'kale', 'mixed_greens', 'greens',
+  'cucumber', 'radish', 'sprouts', 'microgreens', 'watercress',
+  // Fresh herbs (when not cooking)
+  'mint', 'basil', 'cilantro', 'parsley', 'dill', 'chives',
 ]);
+
+// Ingredients that suggest hot preparation context
+const hotContextIngredients = new Set([
+  // Proteins (usually cooked)
+  'chicken', 'beef', 'pork', 'lamb', 'steak', 'bacon', 'sausage',
+  'fish', 'salmon', 'shrimp', 'lobster', 'crab', 'scallop',
+  'duck', 'turkey', 'veal',
+  // Starches (usually cooked)
+  'rice', 'pasta', 'noodles', 'potato', 'potatoes',
+]);
+
+// ===== THERMAL ZONE DETECTION =====
+
+function getThermalZone(technique: string, ingredients?: string[]): 'hot' | 'cold' | 'neutral' {
+  const normalized = technique.toLowerCase().replace(/[-\s]/g, '_');
+  
+  // Explicit hot technique
+  if (hotTechniques.has(normalized)) {
+    return 'hot';
+  }
+  
+  // Explicit cold technique
+  if (coldTechniques.has(normalized)) {
+    return 'cold';
+  }
+  
+  // Neutral technique - use ingredient context
+  if (neutralTechniques.has(normalized) && ingredients && ingredients.length > 0) {
+    let coldScore = 0;
+    let hotScore = 0;
+    
+    for (const ingredient of ingredients) {
+      const normalizedIng = ingredient.toLowerCase().replace(/[-\s]/g, '_');
+      if (coldContextIngredients.has(normalizedIng)) {
+        coldScore++;
+      }
+      if (hotContextIngredients.has(normalizedIng)) {
+        hotScore++;
+      }
+    }
+    
+    // If clear cold context (fruits, salad greens), use cold
+    if (coldScore > hotScore) {
+      return 'cold';
+    }
+    // If clear hot context (proteins, starches), use hot
+    if (hotScore > coldScore) {
+      return 'hot';
+    }
+  }
+  
+  // Default to neutral (no modifiers)
+  return 'neutral';
+}
+
+// ===== MAIN SOUND PROMPT GENERATOR =====
 
 // Get the most specific sound prompt for an action + ingredients combo
 export function getSoundPrompt(action: string, ingredients?: string[]): string {
@@ -249,16 +394,39 @@ export function getSoundPrompt(action: string, ingredients?: string[]): string {
     basePrompt = getCategorySound(action);
   }
   
-  // Only add ingredient modifiers for HOT techniques
-  // Skip for cold preparations to avoid "sizzling" sounds on fruit salad etc.
-  if (ingredients && ingredients.length > 0 && !coldTechniques.has(normalized)) {
-    const ingredientModifier = getIngredientModifier(ingredients);
-    if (ingredientModifier) {
-      return `${basePrompt}, ${ingredientModifier}`;
+  // Get thermal zone for this technique + ingredients
+  const thermalZone = getThermalZone(normalized, ingredients);
+  
+  // Only add ingredient modifiers if we have ingredients
+  if (ingredients && ingredients.length > 0) {
+    let modifier: string | null = null;
+    
+    if (thermalZone === 'hot') {
+      modifier = getModifierFromMap(ingredients, hotIngredientModifiers);
+    } else if (thermalZone === 'cold') {
+      modifier = getModifierFromMap(ingredients, coldIngredientModifiers);
+    }
+    // neutral zone: no modifiers added
+    
+    if (modifier) {
+      return `${basePrompt}, ${modifier}`;
     }
   }
   
   return basePrompt;
+}
+
+// Get modifier from specific modifier map
+function getModifierFromMap(ingredients: string[], modifierMap: Record<string, string>): string | null {
+  for (const ingredient of ingredients) {
+    const normalized = ingredient.toLowerCase();
+    for (const [key, modifier] of Object.entries(modifierMap)) {
+      if (normalized.includes(key)) {
+        return modifier;
+      }
+    }
+  }
+  return null;
 }
 
 // Get sound based on tool category
@@ -269,7 +437,7 @@ function getCategorySound(action: string): string {
   if (/wash|rinse|clean|dry/.test(normalized)) {
     return "running water and gentle cleaning sounds";
   }
-  if (/toss|mix|combine|assemble|arrange/.test(normalized)) {
+  if (/toss|mix_salad|combine|assemble|arrange/.test(normalized)) {
     return "gentle mixing and arranging sounds in bowl";
   }
   if (/peel|core|hull|pit|segment|scoop/.test(normalized)) {
@@ -277,6 +445,14 @@ function getCategorySound(action: string): string {
   }
   if (/drizzle|sprinkle|garnish|plate/.test(normalized)) {
     return "delicate finishing sounds, careful plating";
+  }
+  if (/chill|freeze|cool|ice/.test(normalized)) {
+    return "cold temperature ambient, refrigeration sounds";
+  }
+  
+  // Cutting (typically cold)
+  if (/chop|slice|dice|cut|mince|julienne|cube/.test(normalized)) {
+    return "sharp knife cutting on wooden board";
   }
   
   // Hot preparations
@@ -286,32 +462,38 @@ function getCategorySound(action: string): string {
   if (/boil|simmer|steam|poach/.test(normalized)) {
     return "water bubbling gently in pot";
   }
-  if (/chop|slice|dice|cut|mince/.test(normalized)) {
-    return "sharp knife cutting on wooden board";
-  }
-  if (/whisk|stir|blend/.test(normalized)) {
-    return "utensil mixing ingredients in bowl";
-  }
   if (/bake|roast|oven/.test(normalized)) {
     return "oven with gentle heat and occasional sizzle";
+  }
+  
+  // Mixing (neutral - no heat sounds)
+  if (/whisk|stir|blend|mix|fold/.test(normalized)) {
+    return "utensil mixing ingredients in bowl";
   }
   
   // Final fallback - generic but neutral (no sizzling)
   return "kitchen preparation sounds, utensils and ingredients";
 }
 
-// Get modifier based on primary ingredient
-function getIngredientModifier(ingredients: string[]): string | null {
-  for (const ingredient of ingredients) {
-    const normalized = ingredient.toLowerCase();
-    for (const [key, modifier] of Object.entries(ingredientSoundModifiers)) {
-      if (normalized.includes(key)) {
-        return modifier;
-      }
-    }
-  }
-  return null;
-}
+// ===== EXPORTS =====
+
+// Background ambient kitchen sounds
+export const ambiencePrompts = {
+  kitchen: "busy professional restaurant kitchen ambience with chefs calling orders, pots clanking, distant sizzling, ventilation hum, occasional plate sounds, kitchen staff working efficiently",
+  morning: "calm morning kitchen with coffee brewing, eggs frying gently, quiet preparation sounds",
+  rush: "intense dinner rush kitchen with multiple burners going, urgent calls, rapid plating",
+  quiet: "peaceful home kitchen with single pan cooking, subtle ambient hum",
+};
+
+// UI and event sounds
+export const uiSounds = {
+  orderReceived: "restaurant ticket printer printing new order, paper ripping",
+  serve: "service bell ding with plate sliding onto pass",
+  success: "satisfied chef hmm with soft positive chime",
+  error: "kitchen timer urgent beeping alert",
+  start: "gas burner igniting with click and whoosh",
+  complete: "order complete with gentle triumphant tone",
+};
 
 // Get ambient sound prompt
 export function getAmbiencePrompt(variant: keyof typeof ambiencePrompts = 'kitchen'): string {
@@ -332,5 +514,8 @@ export const categoryFallbacks: Record<string, string> = {
   transform: "cooking transformation with aromatic sizzle",
 };
 
-// Backwards compatibility - map old generic prompts to new specific ones
+// Export thermal zone detection for external use
+export { getThermalZone, hotTechniques, coldTechniques, neutralTechniques };
+
+// Backwards compatibility
 export const actionSounds = techniqueSounds;
