@@ -1,87 +1,85 @@
 
-# Improve Cold vs Hot Cooking Sound Effect Separation
+# Optimize Lazy Loading for Orders, Dishes, and Icons
 
-## Problem Analysis
+## Current State Analysis
 
-The current sound system sometimes produces unrealistic audio by mixing heat-related sounds with cold preparation techniques. For example:
-- Making a fruit salad might produce sizzling sounds
-- Whisking a salad dressing could sound like pan-frying
-- Cold preparations like "toss" with proteins might add "sizzling" modifiers
+The illustration system already has several optimizations in place:
+- Database caching (332 illustrations already cached)
+- Request queue limiting (max 3 concurrent)
+- Native `loading="lazy"` on images
+- Background pre-generation of priority items
 
-## Root Causes
-
-1. **Incomplete cold technique list** - Many cold prep actions are not in the `coldTechniques` set
-2. **Heat-contaminated ingredient modifiers** - Words like "sizzling", "crisping" appear in ingredient modifiers
-3. **Missing cold-specific ingredient modifiers** - No dedicated sounds for cold ingredient contexts
-4. **No ingredient temperature awareness** - The system doesn't consider if ingredients are being used in cold vs hot contexts
+However, there are significant opportunities for further optimization, especially for initial load performance and viewport-aware loading.
 
 ---
 
 ## Solution Overview
 
-Enhance the sound system with a clear separation between "thermal zones":
-- **Hot Zone**: Heat-based techniques (fry, grill, sauté, etc.)
-- **Cold Zone**: Cold preparations (wash, toss, arrange, etc.)
-- **Neutral Zone**: Techniques that could be either (whisk, mix, blend)
+Implement three layers of optimization:
 
-For neutral techniques, use ingredient context to determine which zone applies.
+1. **Bulk Cache Preloading** - Load all cached URLs on app init (single DB query)
+2. **Intersection Observer Pattern** - Only request illustrations for visible items
+3. **Optimized Image Loading** - Better placeholders, responsive sizes, and fade-in effects
 
 ---
 
 ## Implementation Details
 
-### File: `src/lib/sounds.ts`
+### 1. Bulk Cache Preloading
 
-**1. Expand the `coldTechniques` set**
+**File: `src/context/IllustrationContext.tsx`**
 
-Add missing cold preparation techniques:
-- `chop`, `dice`, `slice`, `mince`, `julienne`, `cube` (cutting is typically cold)
-- `shred`, `grate`, `fillet`, `debone`, `trim`
-- `marinate`, `brine`, `pickle`, `soak`
-- `stuff`, `roll`, `shape`
-- `strain`, `drain`, `sift`
-- `chill`, `freeze`, `thaw`, `room_temp`, `ice_bath`, `cool`
+Add a new initialization function that fetches ALL cached illustration URLs in a single database query when the app loads.
 
-**2. Create a `hotTechniques` set**
+Changes:
+- Add `initializeFromCache()` function that runs once on mount
+- Query: `SELECT prompt_key, image_url FROM generated_illustrations`
+- Populate the illustrations state map immediately
+- This eliminates hundreds of individual cache-check queries
 
-Explicitly define heat-based techniques:
-- `fry`, `saute`, `sear`, `grill`, `roast`, `bake`, `broil`, `braise`
-- `boil`, `simmer`, `steam`, `poach`, `blanch`, `stew`
-- `deep_fry`, `pan_fry`, `stir_fry`, `flash_fry`, `tempura`
-- `flambe`, `smoke`, `char`, `toast`, `brown`, `crisp`, `render`
-- `reduce`, `caramelize`, `deglaze`, `melt`
+Benefits:
+- Single DB query vs 50+ individual queries on page load
+- Instant display for all previously generated illustrations
+- Significantly faster initial render
 
-**3. Split ingredient modifiers by temperature context**
+### 2. Intersection Observer for Lazy Requests
 
-Create two separate modifier maps:
-- `hotIngredientModifiers`: Heat-specific descriptions ("sizzling", "crisping", "browning")
-- `coldIngredientModifiers`: Cold-specific descriptions ("crisp", "fresh", "chilled")
+**New File: `src/hooks/useVisibilityRequest.ts`**
 
-**4. Update `getSoundPrompt()` function**
+Create a custom hook that only triggers illustration requests when an element enters the viewport.
 
-Logic flow:
-1. Check if technique is in `hotTechniques` → use hot modifiers only
-2. Check if technique is in `coldTechniques` → use cold modifiers only  
-3. For neutral techniques → analyze ingredients to determine context
-4. Never mix hot modifiers with cold techniques
+Logic:
+- Use IntersectionObserver with `rootMargin: '100px'` (prefetch slightly before visible)
+- Track if component has been visible with a ref
+- Only call `requestIllustration()` when first visible
 
-**5. Add ingredient temperature inference**
+**Updated Files:**
+- `src/components/kitchen/DishIllustration.tsx`
+- `src/components/kitchen/IngredientIllustration.tsx`
+- `src/components/kitchen/TechniqueIllustration.tsx`
 
-Create helper function to detect if ingredients suggest cold preparation:
-- Fruits (strawberry, mango, etc.) → likely cold
-- Raw salad vegetables (lettuce, cucumber) → likely cold
-- Proteins + heat technique → likely hot
+Replace the `useEffect` that immediately requests illustrations with the new visibility-aware hook.
 
----
+### 3. Optimized Order Card Rendering
 
-### File: `src/hooks/useSoundEffects.ts`
+**File: `src/components/kitchen/OrderCard.tsx`**
 
-**Update `getActionDuration()` function**
+Add intersection observer to only render full illustration when card is near viewport.
 
-Refine duration logic to consider cold vs hot:
-- Cold preparations are generally quicker and quieter (2 seconds)
-- Hot techniques need longer for realistic sizzle/bubble sounds (3-4 seconds)
-- Neutral techniques get medium duration (2-3 seconds)
+**File: `src/components/kitchen/OrderQueue.tsx`**
+
+Optimize the scroll area:
+- Add `contain: layout style` CSS for better scroll performance
+- Consider chunked rendering for very large lists
+
+### 4. Enhanced Image Loading UX
+
+**All Illustration Components:**
+
+- Add `decoding="async"` for non-blocking image decode
+- Add smooth fade-in transition when images load
+- Add `fetchpriority` attribute (high for visible, low for offscreen)
+- Implement progressive loading with CSS blur placeholder
 
 ---
 
@@ -89,15 +87,36 @@ Refine duration logic to consider cold vs hot:
 
 | File | Changes |
 |------|---------|
-| `src/lib/sounds.ts` | Add `hotTechniques` set, expand `coldTechniques`, split ingredient modifiers, update `getSoundPrompt()` with temperature-aware logic |
-| `src/hooks/useSoundEffects.ts` | Refine duration calculation for cold/hot/neutral techniques |
+| `src/context/IllustrationContext.tsx` | Add `initializeFromCache()` for bulk preloading on mount |
+| `src/hooks/useVisibilityRequest.ts` | New hook with IntersectionObserver for viewport-aware requests |
+| `src/components/kitchen/DishIllustration.tsx` | Use visibility hook, add fade-in, async decoding |
+| `src/components/kitchen/IngredientIllustration.tsx` | Use visibility hook, add fade-in, async decoding |
+| `src/components/kitchen/TechniqueIllustration.tsx` | Use visibility hook, add fade-in, async decoding |
+| `src/components/kitchen/OrderCard.tsx` | Add viewport awareness for heavy illustration |
+| `src/components/kitchen/OrderQueue.tsx` | Add CSS containment for scroll performance |
 
 ---
 
-## Expected Outcome
+## Expected Performance Improvements
 
-After implementation:
-- Fruit salads will have soft, crisp cutting and gentle tossing sounds
-- Grilled steaks will have proper sizzling and charring sounds
-- Whisking will sound different for cold dressings vs hot sauces
-- No more jarring "sizzling onion" sounds when making a cold salad
+| Metric | Before | After |
+|--------|--------|-------|
+| Initial DB queries | 50+ individual | 1 bulk query |
+| Time to first paint | Blocked by multiple requests | Immediate cached display |
+| API calls for offscreen items | All triggered immediately | Only when scrolled into view |
+| Memory usage | All images loaded | Only visible images in memory |
+| Scroll performance | Re-renders on every scroll | CSS containment optimized |
+
+---
+
+## Additional Considerations
+
+**Image Optimization (Optional Future Enhancement):**
+- The Supabase Storage already provides image serving
+- Could add image transformation query params for responsive sizes
+- Example: `?width=200&quality=80` for thumbnails
+
+**Virtualization (If List Grows Beyond 100+ Items):**
+- Consider adding `@tanstack/react-virtual` for true virtualization
+- Only render DOM elements for visible cards
+- Would be recommended if order list exceeds 150-200 items regularly
