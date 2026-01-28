@@ -1,181 +1,188 @@
 
 
-# Fix Bak Kut Teh Cooking Issues & Enhance Discovery System
+# Compact Chefs Toggle and Improved Recipe Guidance
 
-## Problems Identified
+## Overview
 
-### 1. AI Hallucination of Ingredient IDs
-The Chef de Cuisine (cooking-agent) sometimes generates non-existent ingredient IDs like `garlicAddress` instead of `garlic`. This causes the cooking loop to create placeholder ingredients that don't match anything in inventory, breaking the recipe flow.
+Two improvements to enhance the user experience and cooking success rate:
 
-### 2. Repetitive Action Loop (No Progress Detection)
-The agent gets stuck repeating the same action (e.g., `crush(black_pepper)` 4-5 times) without progressing to the next step. There's no loop detection to identify this pattern and force progression.
+1. **Compact Mode for Chefs Section**: Add a toggle to switch between full view (current) and compact view (avatars + status only), reducing vertical space when focus is on the Kitchen Log.
 
-### 3. Missing Southeast Asian Spices
-The base inventory lacks essential ingredients for authentic Bak Kut Teh and other Southeast Asian dishes:
-- Star anise, cloves, cinnamon sticks (Chinese 5-spice base)
-- White peppercorns (key for Bak Kut Teh broth)
-- Dang gui (angelica root)
-- Dried shrimp, shallots
-- Galangal, lemongrass, kaffir lime leaves
+2. **Recipe Pattern Guidance for Chef de Cuisine**: Add explicit recipe patterns and step-by-step guidance in the system prompt to dramatically increase success rate for simple dishes like "Cheese Plate" that currently fail due to overthinking.
 
-### 4. Discovered Ingredients Not Persisting
-Currently, new ingredients discovered during cooking (via alchemy-agent) are only added to the session-local inventory. When `isDiscovery: true`, they are added to persistent inventory - but this system could be more robust.
+---
+
+## Problem Analysis
+
+### Cheese Plate Rejection Issue
+
+The Chef de Cuisine currently fails on simple dishes because:
+- It lacks explicit patterns for basic dishes
+- It overthinks by trying complex techniques when a simple approach works
+- "Cheese Plate" just needs: `slice(cheese)` then `plate([sliced_cheese])` then `serve([plated_cheese])`
+- Without guidance, the AI might try elaborate transformations that change the dish name
+
+### UI Space Optimization
+
+The Chefs Section takes significant vertical space even when users just want to monitor activity. A compact mode would show:
+- Horizontal row of avatars
+- Activity indicator dots
+- Current thinking text (truncated)
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Ingredient ID Validation & Normalization
+### Part 1: Compact Mode Toggle for Chefs Section
+
+**File: `src/components/kitchen/ChefsSection.tsx`**
+
+| Change | Description |
+|--------|-------------|
+| Add state | `const [isCompact, setIsCompact] = useState(false)` |
+| Toggle button | Small icon button in header to switch modes |
+| Compact layout | Horizontal flex row with avatars and status dots |
+| Full layout | Current vertical cards (unchanged) |
+
+**Compact Mode Layout:**
+```text
++-------------------------------------------------------+
+| The Chefs of Reality              [Expand/Collapse]   |
++-------------------------------------------------------+
+| [Avatar1]  [Avatar2]  [Avatar3]                       |
+|  Chef       Sous      Expeditor                       |
+|  (idle)    (active)    (idle)                         |
++-------------------------------------------------------+
+```
+
+**Full Mode Layout:** (Current behavior, unchanged)
+
+### Part 2: Recipe Pattern Library for Simple Dishes
 
 **File: `supabase/functions/cooking-agent/index.ts`**
 
-Add a post-processing step to validate and normalize ingredient IDs before returning:
+Add a recipe patterns section to the system prompt that provides explicit step-by-step guidance for common dishes, especially simple ones.
 
-| Check | Action |
-|-------|--------|
-| ID contains garbage (`Address`, `123`, special chars) | Extract base word and match to inventory |
-| ID not in inventory but similar exists | Fuzzy match to closest inventory item |
-| ID is ingredient name (not ID) | Convert to proper snake_case ID |
+**Recipe Pattern Structure:**
+
+| Difficulty | Pattern Style |
+|------------|---------------|
+| Beginner | 1-2 direct actions with exact sequence |
+| Easy | 3-4 step patterns with clear outcomes |
+| Intermediate+ | General technique hints (current approach) |
+
+**Example Patterns to Add:**
 
 ```text
-Example transformations:
-- "garlicAddress" → "garlic"
-- "Black Pepper" → "black_pepper"  
-- "pork ribs" → "pork" (closest match)
+RECIPE PATTERNS (follow these for known dishes):
+
+Beginner dishes (1-2 steps):
+- "Cheese Plate": slice(cheese) → plate([sliced_cheese]) → serve
+- "Sliced Apple": slice(apple) → plate([sliced_apple]) → serve
+- "Buttered Bread": slice(bread) → spread butter on sliced_bread → serve
+- "Glass of Milk": pour/plate(milk) → serve
+- "Fresh Orange Juice": juice(orange) OR crush(orange) → strain → serve
+- "Mixed Nuts": mix([various nuts]) → plate → serve
+- "Fruit Bowl": slice(fruits) → mix → plate → serve
+
+Easy dishes (3-4 steps):
+- "Fried Eggs": crack(egg) → pan_fry(egg) → season(salt, pepper) → serve
+- "Scrambled Eggs": crack(egg) → whisk → pan_fry → season → serve
+- "Grilled Cheese": slice(bread, cheese) → assemble → pan_fry → serve
+- "Avocado Toast": toast(bread) → mash(avocado) → spread on toast → season → serve
 ```
 
-### Phase 2: Loop Detection in Cooking Loop
-
-**File: `src/hooks/useCookingLoop.ts`**
-
-Track recent actions and detect repetitive patterns:
+**Integration into System Prompt:**
 
 ```text
-New tracking:
-- actionHistory: Array of { action, ingredients } for last 5 iterations
-- Check if current action+ingredients matches any of last 3 actions
-- If duplicate detected:
-  - Log warning
-  - Add context to conversation: "You already did this. Try something different."
-  - If 3 consecutive duplicates: force-serve the last generated ingredient
-```
+// After ORDER TO FULFILL section, add:
+RECIPE GUIDANCE:
+${getRecipeGuidance(order.dishName, order.difficulty)}
 
-| Counter | Behavior |
-|---------|----------|
-| 1st repeat | Continue, add warning to history |
-| 2nd repeat | Add explicit instruction to try different approach |
-| 3rd repeat | Auto-serve last generated ingredient |
-
-### Phase 3: Expand Southeast Asian Spice Inventory
-
-**File: `src/data/ingredients.ts`**
-
-Add 15 new Southeast Asian ingredients:
-
-| Category | New Ingredients |
-|----------|-----------------|
-| Spices | star_anise, cloves, white_pepper, dang_gui (angelica), cinnamon_stick, five_spice_powder |
-| Aromatics | galangal, lemongrass, kaffir_lime_leaf, pandan_leaf, shallot |
-| Proteins | pork_ribs, dried_shrimp |
-| Sauces | dark_soy_sauce, oyster_sauce |
-
-### Phase 4: Robust Discovery Persistence
-
-**File: `src/hooks/useCookingLoop.ts`**
-
-Enhance the discovery system to properly persist to global inventory:
-
-Current flow:
-```text
-alchemyResult.isDiscovery === true → addToInventory(newIngredient)
-```
-
-Enhanced flow:
-```text
-1. alchemyResult.isDiscovery === true
-2. Check if ingredient ID already exists in global inventory (avoid duplicates)
-3. If new: addToInventory(newIngredient)
-4. Show toast notification: "New ingredient discovered: {name}"
-5. Timeline event already exists (✨ NEW DISCOVERY)
-```
-
-**File: `src/context/KitchenContext.tsx`**
-
-Update `addToInventory` to check for duplicates:
-
-```text
-addToInventory(ingredient):
-  if (!inventory.some(i => i.id === ingredient.id)):
-    setInventory([...inventory, ingredient])
+IMPORTANT: For beginner/easy dishes, follow the pattern closely. 
+Do not overcomplicate - the dish name should match what was ordered.
 ```
 
 ---
 
 ## Technical Details
 
-### Ingredient ID Normalizer (cooking-agent)
+### Compact Mode State Management
 
 ```text
-function normalizeIngredientId(rawId: string, inventory: any[]): string {
-  // 1. Clean garbage patterns
-  let cleaned = rawId
-    .replace(/Address|[0-9]+|[^a-zA-Z_\s]/g, '')
-    .toLowerCase()
-    .trim();
-  
-  // 2. Check direct match
-  if (inventory.some(i => i.id === cleaned)) return cleaned;
-  
-  // 3. Convert spaces to underscores
-  const snakeCase = cleaned.replace(/\s+/g, '_');
-  if (inventory.some(i => i.id === snakeCase)) return snakeCase;
-  
-  // 4. Fuzzy match: find ingredient containing this word
-  const fuzzyMatch = inventory.find(i => 
-    i.id.includes(cleaned) || i.name.toLowerCase().includes(cleaned)
-  );
-  if (fuzzyMatch) return fuzzyMatch.id;
-  
-  // 5. Return original if no match (let the placeholder logic handle it)
-  return rawId;
-}
+// ChefsSection.tsx
+const [isCompact, setIsCompact] = useState(false);
+
+// Compact view component
+const CompactChefRow = ({ agent, profile, isActive }) => (
+  <div className="flex items-center gap-2">
+    <div className="relative">
+      <ChefAvatar agentType={type} isActive={isActive} className="w-10 h-10" />
+      {isActive && <span className="absolute bottom-0 right-0 w-2 h-2 bg-processing rounded-full animate-pulse" />}
+    </div>
+    <div className="flex-1 min-w-0">
+      <span className="text-xs font-medium">{profile.title}</span>
+      {isActive && agent.currentThinking && (
+        <p className="text-[10px] text-processing truncate">{agent.currentThinking}</p>
+      )}
+    </div>
+  </div>
+);
 ```
 
-### Loop Detection Logic (useCookingLoop)
+### Recipe Guidance Function
 
 ```text
-interface ActionRecord {
-  action: string;
-  ingredients: string[];
-}
-
-// Track last 5 actions
-const actionHistory: ActionRecord[] = [];
-
-// In cooking loop, after getting cookingResponse:
-const currentAction = { 
-  action: actionName, 
-  ingredients: ingredientIds.sort() 
-};
-
-const isRepeat = actionHistory.some(prev => 
-  prev.action === currentAction.action && 
-  JSON.stringify(prev.ingredients) === JSON.stringify(currentAction.ingredients)
-);
-
-if (isRepeat) {
-  repeatCount++;
-  if (repeatCount >= 3) {
-    // Force serve
-  } else {
-    // Add context to conversation: "Don't repeat. Try different."
+// cooking-agent/index.ts
+function getRecipeGuidance(dishName: string, difficulty: string): string {
+  const normalizedName = dishName.toLowerCase();
+  
+  // Beginner patterns
+  const beginnerPatterns: Record<string, string> = {
+    'cheese plate': 'slice(cheese) → plate([sliced_cheese]) → serve([plated_cheese])',
+    'sliced apple': 'slice(apple) → plate([sliced_apple]) → serve([plated_apple])',
+    'buttered bread': 'slice(bread) → spread(butter, [sliced_bread]) → serve',
+    'glass of milk': 'plate(milk) → serve([plated_milk])',
+    'fresh orange juice': 'crush(orange) → strain → serve',
+    'mixed nuts': 'mix([various nuts from inventory]) → plate → serve',
+    'fruit bowl': 'slice(fruits) → mix → plate → serve',
+    'toast with jam': 'toast(bread) → spread(jam) → serve',
+  };
+  
+  // Easy patterns
+  const easyPatterns: Record<string, string> = {
+    'fried eggs': 'crack(egg) → pan_fry → season(salt, pepper) → plate → serve',
+    'scrambled eggs': 'crack(egg) → whisk → pan_fry(with stirring) → season → serve',
+    'grilled cheese': 'slice(bread, cheese) → assemble sandwich → pan_fry → serve',
+    'avocado toast': 'toast(bread) → mash(avocado) → spread on toast → season → serve',
+    'caprese salad': 'slice(tomato, mozzarella) → arrange with basil → drizzle(olive_oil) → serve',
+    'boiled rice': 'rinse(rice) → boil(rice, water) → drain → serve',
+    'mashed potatoes': 'peel(potato) → boil → mash → mix(butter, cream) → season → serve',
+    'guacamole': 'mash(avocado) → mix(with lime, salt, cilantro) → serve',
+  };
+  
+  // Check for pattern match
+  for (const [dish, pattern] of Object.entries(beginnerPatterns)) {
+    if (normalizedName.includes(dish)) {
+      return `RECOMMENDED PATTERN: ${pattern}\nFollow this pattern closely for best results.`;
+    }
   }
-} else {
-  repeatCount = 0;
+  
+  for (const [dish, pattern] of Object.entries(easyPatterns)) {
+    if (normalizedName.includes(dish)) {
+      return `SUGGESTED APPROACH: ${pattern}\nUse this as a guide but adapt as needed.`;
+    }
+  }
+  
+  // No specific pattern - return general guidance
+  if (difficulty === 'beginner') {
+    return 'This is a simple dish. Keep it simple: 1-2 cooking actions, then plate and serve.';
+  } else if (difficulty === 'easy') {
+    return 'This is an easy dish. Focus on 3-4 essential steps. Avoid overcomplicating.';
+  }
+  
+  return ''; // No special guidance for harder dishes
 }
-
-actionHistory.push(currentAction);
-if (actionHistory.length > 5) actionHistory.shift();
 ```
 
 ---
@@ -184,40 +191,35 @@ if (actionHistory.length > 5) actionHistory.shift();
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/cooking-agent/index.ts` | Add ingredient ID normalization after parsing function call |
-| `src/hooks/useCookingLoop.ts` | Add loop detection, duplicate action handling, discovery toast |
-| `src/data/ingredients.ts` | Add 15 Southeast Asian ingredients |
-| `src/context/KitchenContext.tsx` | Duplicate check in addToInventory |
+| `src/components/kitchen/ChefsSection.tsx` | Add compact/full toggle, compact layout component |
+| `supabase/functions/cooking-agent/index.ts` | Add recipe guidance function, inject patterns into prompt |
 
 ---
 
-## Expected Results After Implementation
+## Expected Results
 
-### Before
-```text
-1. Chef calls crush(["garlicAddress", "black_pepper"])
-2. "garlicAddress" not found → placeholder created
-3. Alchemy only receives black_pepper
-4. Result: "Ground Black Pepper"
-5. Chef repeats crush(["garlicAddress", "black_pepper"]) again
-6. Loop continues until max iterations
-7. Auto-serve incorrect dish
-```
+### Compact Mode
 
-### After
-```text
-1. Chef calls crush(["garlicAddress", "black_pepper"])
-2. Normalizer: "garlicAddress" → "garlic"
-3. Both garlic + black_pepper sent to Alchemy
-4. Result: "Crushed Garlic Pepper Paste"
-5. Chef proceeds to next step (simmer with pork_ribs)
-6. Loop detection prevents repeating same action
-7. Authentic Bak Kut Teh served with proper broth
-```
+| View | Space Used | Information Shown |
+|------|------------|-------------------|
+| Full (default) | ~400px height | Full cards with descriptions, activity, avatars |
+| Compact | ~60px height | Horizontal avatar row, status dots, truncated activity |
 
-### Bak Kut Teh Specific Improvements
-- **star_anise**, **cloves**, **white_pepper**, **dang_gui** now available in inventory
-- Cuisine detector already provides Malaysian hints
-- Chef can build authentic herbal broth base
-- Pork ribs available for slow simmering
+### Recipe Success Rate
+
+| Before | After |
+|--------|-------|
+| "Cheese Plate" → Rejected (overcomplicated transformation) | "Cheese Plate" → Verified (follows slice → plate → serve pattern) |
+| Simple dishes fail due to name mismatch | Simple dishes succeed with guided patterns |
+| AI guesses cooking steps | AI follows proven recipe patterns |
+
+---
+
+## UI Toggle Behavior
+
+The toggle in the Chefs Section header:
+- **Icon**: Chevron up/down or maximize/minimize icon
+- **Default state**: Full view (compact = false)
+- **Click**: Toggle between modes
+- **Persistence**: Session only (no localStorage needed)
 
