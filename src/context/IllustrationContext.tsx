@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface IllustrationState {
@@ -12,6 +12,7 @@ type IllustrationType = 'dish' | 'chef' | 'ingredient' | 'technique';
 interface IllustrationContextType {
   getIllustration: (key: string) => IllustrationState;
   requestIllustration: (name: string, type: IllustrationType, displayName?: string) => Promise<string | null>;
+  isInitialized: boolean;
 }
 
 const IllustrationContext = createContext<IllustrationContextType | undefined>(undefined);
@@ -43,10 +44,47 @@ const chefPrompts: Record<string, string> = {
 
 export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ children }) => {
   const [illustrations, setIllustrations] = useState<Record<string, IllustrationState>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
   const pendingRequests = useRef<Set<string>>(new Set());
   const requestQueue = useRef<Array<() => Promise<void>>>([]);
   const activeRequests = useRef<number>(0);
   const MAX_CONCURRENT = 3;
+
+  // Bulk preload all cached illustrations on mount
+  useEffect(() => {
+    const initializeFromCache = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('generated_illustrations')
+          .select('prompt_key, image_url');
+
+        if (error) {
+          console.error('Failed to preload illustration cache:', error);
+          setIsInitialized(true);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const cachedIllustrations: Record<string, IllustrationState> = {};
+          data.forEach(({ prompt_key, image_url }) => {
+            cachedIllustrations[prompt_key] = {
+              url: image_url,
+              isLoading: false,
+              error: null
+            };
+          });
+          setIllustrations(cachedIllustrations);
+          console.log(`Preloaded ${data.length} cached illustrations`);
+        }
+      } catch (err) {
+        console.error('Error initializing illustration cache:', err);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeFromCache();
+  }, []);
 
   const processQueue = useCallback(async () => {
     while (requestQueue.current.length > 0 && activeRequests.current < MAX_CONCURRENT) {
@@ -74,7 +112,7 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
   ): Promise<string | null> => {
     const promptKey = generatePromptKey(name, type);
 
-    // Return cached URL if available
+    // Return cached URL if available (from bulk preload)
     if (illustrations[promptKey]?.url) {
       return illustrations[promptKey].url;
     }
@@ -95,23 +133,7 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
     return new Promise((resolve) => {
       const doRequest = async () => {
         try {
-          // First check database cache
-          const { data: cached } = await supabase
-            .from('generated_illustrations')
-            .select('image_url')
-            .eq('prompt_key', promptKey)
-            .single();
-
-          if (cached?.image_url) {
-            setIllustrations(prev => ({
-              ...prev,
-              [promptKey]: { url: cached.image_url, isLoading: false, error: null }
-            }));
-            pendingRequests.current.delete(promptKey);
-            resolve(cached.image_url);
-            return;
-          }
-
+          // Skip DB cache check since we already bulk-loaded
           // Generate new illustration - use type-specific prompt if available
           let actualPrompt = displayName || name;
           if (type === 'chef' && chefPrompts[name]) {
@@ -165,6 +187,7 @@ export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ chil
   const value: IllustrationContextType = {
     getIllustration,
     requestIllustration,
+    isInitialized,
   };
 
   return (
