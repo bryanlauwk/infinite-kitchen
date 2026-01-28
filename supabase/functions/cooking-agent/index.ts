@@ -224,12 +224,24 @@ serve(async (req) => {
       `${i.emoji} ${i.name} (id: ${i.id})`
     ).join(", ");
 
+    // Build previous attempts context if recooking
+    let previousAttemptsContext = "";
+    if (order.previousAttempts && order.previousAttempts.length > 0) {
+      previousAttemptsContext = `\n\nPREVIOUS ATTEMPTS (FAILED):
+${order.previousAttempts.map((attempt: { servedDish: string; reasoning: string }, i: number) => 
+  `- Attempt ${i + 1}: Served "${attempt.servedDish}" - Rejected because: ${attempt.reasoning}`
+).join("\n")}
+
+IMPORTANT: The previous attempt(s) were rejected. Try a DIFFERENT approach this time.
+Consider using different techniques, ingredient combinations, or cooking methods.`;
+    }
+
     const systemPrompt = `You are a master chef AI that cooks dishes by calling cooking functions.
 
 CURRENT INVENTORY:
 ${inventoryList}
 
-ORDER TO FULFILL: ${order.emoji} ${order.dishName}
+ORDER TO FULFILL: ${order.emoji} ${order.dishName}${previousAttemptsContext}
 
 RULES:
 1. You can ONLY use ingredients from the inventory above
