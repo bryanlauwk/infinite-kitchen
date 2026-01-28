@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { tools } from '@/data/tools';
 import { TechniqueToggle } from './TechniqueToggle';
+import { useKitchen } from '@/context/KitchenContext';
 
 // Group tools by category for display
 const categoryLabels: Record<string, string> = {
@@ -15,6 +16,9 @@ const categoryLabels: Record<string, string> = {
 };
 
 export const TechniquesPanel: React.FC = () => {
+  const { activeTechnique } = useKitchen();
+  const techniqueRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
   // Track active techniques (all enabled by default)
   const [activeTechniques, setActiveTechniques] = useState<Set<string>>(
     new Set(tools.map(t => t.id))
@@ -31,6 +35,18 @@ export const TechniquesPanel: React.FC = () => {
       return next;
     });
   };
+  
+  // Scroll to active technique when it changes
+  useEffect(() => {
+    if (activeTechnique) {
+      // Normalize the technique name for matching
+      const normalizedTechnique = activeTechnique.toLowerCase().replace(/[-\s]/g, '_');
+      const element = techniqueRefs.current.get(normalizedTechnique);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [activeTechnique]);
   
   // Get unique categories in order
   const categories = ['heat', 'cut', 'mix', 'prepare', 'temperature', 'transform', 'finish'];
@@ -62,14 +78,26 @@ export const TechniquesPanel: React.FC = () => {
                   {categoryLabels[category]}
                 </h3>
                 <div className="space-y-0.5">
-                  {categoryTools.map(tool => (
-                    <TechniqueToggle
-                      key={tool.id}
-                      tool={tool}
-                      isActive={activeTechniques.has(tool.id)}
-                      onToggle={(active) => toggleTechnique(tool.id, active)}
-                    />
-                  ))}
+                  {categoryTools.map(tool => {
+                    const normalizedActive = activeTechnique?.toLowerCase().replace(/[-\s]/g, '_');
+                    const isCurrentlyActive = normalizedActive === tool.id;
+                    
+                    return (
+                      <div
+                        key={tool.id}
+                        ref={(el) => {
+                          if (el) techniqueRefs.current.set(tool.id, el);
+                        }}
+                      >
+                        <TechniqueToggle
+                          tool={tool}
+                          isActive={activeTechniques.has(tool.id)}
+                          isCurrentlyUsed={isCurrentlyActive}
+                          onToggle={(active) => toggleTechnique(tool.id, active)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

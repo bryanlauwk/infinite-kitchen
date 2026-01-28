@@ -36,6 +36,13 @@ interface KitchenContextType {
   setCurrentOrder: (order: Order | null) => void;
   addConversationMessage: (message: ConversationMessage) => void;
   clearConversation: () => void;
+  
+  // Real-time cooking indicators
+  activeIngredients: string[];
+  activeTechnique: string | null;
+  setActiveIngredients: (ids: string[]) => void;
+  setActiveTechnique: (id: string | null) => void;
+  clearActiveItems: () => void;
 }
 
 const KitchenContext = createContext<KitchenContextType | undefined>(undefined);
@@ -64,6 +71,10 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     currentOrder: null,
     conversationHistory: [],
   });
+  
+  // Real-time cooking indicators
+  const [activeIngredients, setActiveIngredientsState] = useState<string[]>([]);
+  const [activeTechnique, setActiveTechniqueState] = useState<string | null>(null);
 
   // Inventory functions
   const addToInventory = useCallback((ingredient: Ingredient) => {
@@ -184,6 +195,20 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     setCookingState(prev => ({ ...prev, conversationHistory: [] }));
   }, []);
 
+  // Real-time cooking indicator functions
+  const setActiveIngredients = useCallback((ids: string[]) => {
+    setActiveIngredientsState(ids);
+  }, []);
+
+  const setActiveTechnique = useCallback((id: string | null) => {
+    setActiveTechniqueState(id);
+  }, []);
+
+  const clearActiveItems = useCallback(() => {
+    setActiveIngredientsState([]);
+    setActiveTechniqueState(null);
+  }, []);
+
   const value: KitchenContextType = {
     inventory,
     addToInventory,
@@ -203,6 +228,11 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     setCurrentOrder,
     addConversationMessage,
     clearConversation,
+    activeIngredients,
+    activeTechnique,
+    setActiveIngredients,
+    setActiveTechnique,
+    clearActiveItems,
   };
 
   return (
