@@ -83,8 +83,8 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
         </div>
       </div>
       
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="space-y-6 pr-2">
+      <ScrollArea className="flex-1 min-h-0" style={{ contain: 'strict' }}>
+        <div className="space-y-6 pr-2" style={{ contain: 'layout style' }}>
           {selectedDifficulty === 'all' ? (
             // Grouped view for "All Dishes"
             difficultyOrder.map(difficulty => {

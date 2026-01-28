@@ -65,6 +65,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
         "relative flex flex-col rounded-2xl border border-border bg-card p-3 order-card",
         isActive && "ring-2 ring-processing/50"
       )}
+      style={{ contain: 'layout style paint' }}
     >
       {/* Difficulty Badge */}
       <div className={cn(

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useIllustrations } from '@/context/IllustrationContext';
+import React, { useState } from 'react';
+import { useVisibilityRequest } from '@/hooks/useVisibilityRequest';
 
 interface DishIllustrationProps {
   dishName: string;
@@ -10,42 +10,36 @@ export const DishIllustration: React.FC<DishIllustrationProps> = ({
   dishName, 
   className = ''
 }) => {
-  const { getIllustration, requestIllustration } = useIllustrations();
-  const [hasRequested, setHasRequested] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
-  const promptKey = `dish_${dishName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-  const illustrationState = getIllustration(promptKey);
-
-  useEffect(() => {
-    if (!hasRequested && !illustrationState.url && !illustrationState.isLoading) {
-      setHasRequested(true);
-      requestIllustration(dishName, 'dish');
-    }
-  }, [dishName, hasRequested, illustrationState, requestIllustration]);
+  const { elementRef, illustrationState } = useVisibilityRequest({
+    name: dishName,
+    type: 'dish',
+    rootMargin: '150px' // Prefetch dishes a bit earlier
+  });
 
   return (
     <div 
+      ref={elementRef}
       className={`relative w-full h-20 rounded-xl overflow-hidden bg-muted/50 ${className}`}
+      style={{ contain: 'layout style' }}
     >
       {/* Loading state - shimmer only */}
       {illustrationState.isLoading && (
-        <div className="absolute inset-0 shimmer bg-gradient-to-br from-muted to-muted/50">
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-            style={{
-              animation: 'shimmer 1.5s infinite',
-            }}
-          />
-        </div>
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted to-muted/50" />
       )}
       
-      {/* AI Generated Image */}
-      {illustrationState.url && !illustrationState.isLoading && (
+      {/* AI Generated Image with fade-in */}
+      {illustrationState.url && (
         <img 
           src={illustrationState.url}
           alt={dishName}
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
           loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
           onError={(e) => {
             e.currentTarget.style.display = 'none';
           }}

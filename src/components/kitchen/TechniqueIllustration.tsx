@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useIllustrations } from '@/context/IllustrationContext';
+import React, { useState } from 'react';
+import { useVisibilityRequest } from '@/hooks/useVisibilityRequest';
 import { cn } from '@/lib/utils';
 
 interface TechniqueIllustrationProps {
@@ -13,39 +13,39 @@ export const TechniqueIllustration: React.FC<TechniqueIllustrationProps> = ({
   techniqueId,
   className,
 }) => {
-  const { getIllustration, requestIllustration } = useIllustrations();
-  const [hasRequested, setHasRequested] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
-  // Use techniqueId for consistent key generation (no special characters)
-  const promptKey = `technique_${techniqueId}`;
-  const illustrationState = getIllustration(promptKey);
-
-  useEffect(() => {
-    if (!hasRequested && !illustrationState.url && !illustrationState.isLoading) {
-      setHasRequested(true);
-      // Pass techniqueId as the name for consistent key generation
-      requestIllustration(techniqueId, 'technique', techniqueName);
-    }
-  }, [techniqueId, techniqueName, hasRequested, illustrationState, requestIllustration]);
+  const { elementRef, illustrationState } = useVisibilityRequest({
+    name: techniqueId,
+    type: 'technique',
+    displayName: techniqueName,
+    rootMargin: '100px'
+  });
 
   return (
     <div 
+      ref={elementRef}
       className={cn(
         "w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0",
         "bg-muted/50",
         className
       )}
+      style={{ contain: 'layout style' }}
     >
       {illustrationState.isLoading && (
         <div className="w-full h-full animate-pulse bg-muted" />
       )}
       
-      {illustrationState.url && !illustrationState.isLoading && (
+      {illustrationState.url && (
         <img 
           src={illustrationState.url}
           alt={techniqueName}
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-opacity duration-200 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
           loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
         />
       )}
       
