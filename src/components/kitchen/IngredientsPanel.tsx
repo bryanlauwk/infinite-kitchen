@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,8 +7,10 @@ import { Ingredient, IngredientGroup } from '@/lib/types';
 import { IngredientIllustration } from './IngredientIllustration';
 
 export const IngredientsPanel: React.FC = () => {
-  const { inventory } = useKitchen();
+  const { inventory, activeIngredients } = useKitchen();
   const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
+  const ingredientRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const toggleIngredient = (id: string) => {
     setSelectedIngredients(prev => {
@@ -21,6 +23,17 @@ export const IngredientsPanel: React.FC = () => {
       return next;
     });
   };
+  
+  // Scroll to active ingredient when it changes
+  useEffect(() => {
+    if (activeIngredients.length > 0) {
+      const firstActiveId = activeIngredients[0];
+      const element = ingredientRefs.current.get(firstActiveId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [activeIngredients]);
   
   // Group ingredients by category group
   const groupedIngredients = useMemo(() => {
@@ -55,7 +68,7 @@ export const IngredientsPanel: React.FC = () => {
         </p>
       </div>
       
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
         <div className="space-y-4 pr-2">
           {groupOrder.map(group => {
             const ingredients = groupedIngredients[group];
@@ -73,10 +86,23 @@ export const IngredientsPanel: React.FC = () => {
                 <div className="space-y-0.5">
                   {ingredients.map((ingredient, index) => {
                     const isSelected = selectedIngredients.has(ingredient.id);
+                    const isActive = activeIngredients.includes(ingredient.id) || 
+                                     activeIngredients.includes(ingredient.name.toLowerCase());
+                    
                     return (
                       <div 
                         key={`${group}-${ingredient.id}-${index}`}
-                        className="ingredient-row flex items-center gap-2 py-1.5 px-2 cursor-pointer"
+                        ref={(el) => {
+                          if (el) {
+                            ingredientRefs.current.set(ingredient.id, el);
+                            ingredientRefs.current.set(ingredient.name.toLowerCase(), el);
+                          }
+                        }}
+                        className={`ingredient-row flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded-lg transition-all duration-300 ${
+                          isActive 
+                            ? 'bg-gemini/20 ring-2 ring-gemini/50 scale-[1.02] shadow-md' 
+                            : ''
+                        }`}
                         onClick={() => toggleIngredient(ingredient.id)}
                       >
                         <Checkbox 
@@ -85,17 +111,24 @@ export const IngredientsPanel: React.FC = () => {
                           className="rounded border-muted-foreground/30 data-[state=checked]:bg-gemini data-[state=checked]:border-gemini"
                           onCheckedChange={() => toggleIngredient(ingredient.id)}
                         />
-                        <IngredientIllustration
-                          ingredientName={ingredient.name}
-                        />
+                        <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : ''}`}>
+                          <IngredientIllustration
+                            ingredientName={ingredient.name}
+                          />
+                        </div>
                         <label 
                           htmlFor={`ing-${ingredient.id}-${index}`}
-                          className="text-sm cursor-pointer flex-1 truncate"
+                          className={`text-sm cursor-pointer flex-1 truncate transition-all duration-300 ${
+                            isActive ? 'font-semibold' : ''
+                          }`}
                         >
-                          <span className={isDiscovered ? 'text-gemini' : ''}>
+                          <span className={isDiscovered ? 'text-gemini' : isActive ? 'text-gemini' : ''}>
                             {ingredient.name}
                           </span>
                         </label>
+                        {isActive && (
+                          <span className="inline-flex h-2 w-2 rounded-full bg-gemini animate-pulse" />
+                        )}
                       </div>
                     );
                   })}

@@ -43,6 +43,9 @@ export function useCookingLoop() {
     setOrderReview,
     addConversationMessage,
     clearConversation,
+    setActiveIngredients,
+    setActiveTechnique,
+    clearActiveItems,
   } = useKitchen();
   
   const { setAgentStatus, setAgentThinking } = useAgents();
@@ -179,6 +182,10 @@ export function useCookingLoop() {
         setAgentStatus('chef', 'acting');
         setAgentThinking('chef', `${actionName}(${ingredientIds.join(', ')})`);
         
+        // Set active technique and ingredients for UI feedback
+        setActiveTechnique(actionName);
+        setActiveIngredients(ingredientIds);
+        
         // Play sound for this cooking action with ingredient context
         playActionSound(actionName, ingredientIds);
 
@@ -305,6 +312,9 @@ export function useCookingLoop() {
         setAgentStatus('sous', 'idle');
         setAgentThinking('chef', undefined);
         setAgentThinking('sous', undefined);
+        
+        // Clear active items briefly before next action
+        clearActiveItems();
 
         // Small delay for UI updates
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -374,6 +384,9 @@ export function useCookingLoop() {
       // Stop kitchen ambience
       stopAmbience();
       
+      // Clear active items
+      clearActiveItems();
+      
       // Reset all states
       setCookingActive(false);
       setAgentStatus('chef', 'idle');
@@ -404,6 +417,9 @@ export function useCookingLoop() {
     playServeSound,
     playSuccessSound,
     playErrorSound,
+    setActiveIngredients,
+    setActiveTechnique,
+    clearActiveItems,
   ]);
 
   const abortCooking = useCallback(() => {
