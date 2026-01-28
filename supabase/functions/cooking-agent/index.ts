@@ -275,6 +275,58 @@ function extractActionFromText(content: string, inventory: any[]): { name: strin
   return null;
 }
 
+// Normalize ingredient IDs to fix AI hallucination issues like "garlicAddress" -> "garlic"
+function normalizeIngredientId(rawId: string, inventory: any[]): string {
+  // 1. Already exact match - return as-is
+  if (inventory.some((i: any) => i.id === rawId)) {
+    return rawId;
+  }
+  
+  // 2. Clean garbage patterns (Address, numbers, special chars)
+  let cleaned = rawId
+    .replace(/Address|[0-9]+|[^a-zA-Z_\s]/gi, '')
+    .toLowerCase()
+    .trim();
+  
+  // Check if cleaned version matches
+  if (inventory.some((i: any) => i.id === cleaned)) {
+    console.log(`Normalized ingredient ID: "${rawId}" -> "${cleaned}"`);
+    return cleaned;
+  }
+  
+  // 3. Convert spaces to underscores (e.g., "Black Pepper" -> "black_pepper")
+  const snakeCase = cleaned.replace(/\s+/g, '_');
+  if (inventory.some((i: any) => i.id === snakeCase)) {
+    console.log(`Normalized ingredient ID: "${rawId}" -> "${snakeCase}"`);
+    return snakeCase;
+  }
+  
+  // 4. Fuzzy match: find ingredient containing this word
+  const fuzzyMatch = inventory.find((i: any) => 
+    i.id.includes(cleaned) || 
+    i.name.toLowerCase().includes(cleaned) ||
+    cleaned.includes(i.id)
+  );
+  if (fuzzyMatch) {
+    console.log(`Fuzzy matched ingredient ID: "${rawId}" -> "${fuzzyMatch.id}"`);
+    return fuzzyMatch.id;
+  }
+  
+  // 5. Try matching against name and extracting ID
+  const nameMatch = inventory.find((i: any) => 
+    i.name.toLowerCase() === rawId.toLowerCase() ||
+    i.name.toLowerCase().replace(/\s+/g, '_') === rawId.toLowerCase()
+  );
+  if (nameMatch) {
+    console.log(`Name matched ingredient ID: "${rawId}" -> "${nameMatch.id}"`);
+    return nameMatch.id;
+  }
+  
+  // 6. Return original if no match (placeholder logic will handle it downstream)
+  console.warn(`Could not normalize ingredient ID: "${rawId}"`);
+  return rawId;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -426,11 +478,16 @@ When you're done cooking, call serve() with the final dish ingredient.`;
         args = { ingredients: [] };
       }
       
+      // Normalize ingredient IDs to fix hallucination issues
+      const normalizedIngredients = (args.ingredients || []).map((rawId: string) => 
+        normalizeIngredientId(rawId, inventory)
+      );
+      
       return new Response(JSON.stringify({
         thinking,
         functionCall: {
           name: functionName,
-          ingredients: args.ingredients || []
+          ingredients: normalizedIngredients
         },
         isComplete: functionName === "serve"
       }), {
