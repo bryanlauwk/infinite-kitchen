@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import illustrationManifest from '@/data/illustrationManifest.json';
 
 interface IllustrationState {
   url: string | null;
@@ -42,49 +43,31 @@ const chefPrompts: Record<string, string> = {
   oracle_sun_orb: 'A warm glowing sun orb character with a friendly face. Orange and golden yellow colors with soft gradients. Cosmic and magical appearance. Clean white background. No text. Vector art style.',
 };
 
+// Initialize state from static manifest (synchronous, instant)
+const initializeFromManifest = (): Record<string, IllustrationState> => {
+  const initialState: Record<string, IllustrationState> = {};
+  const manifest = illustrationManifest as Record<string, string>;
+  
+  Object.entries(manifest).forEach(([promptKey, imageUrl]) => {
+    initialState[promptKey] = {
+      url: imageUrl,
+      isLoading: false,
+      error: null
+    };
+  });
+  
+  console.log(`Loaded ${Object.keys(manifest).length} illustrations from static manifest`);
+  return initialState;
+};
+
 export const IllustrationProvider: React.FC<IllustrationProviderProps> = ({ children }) => {
-  const [illustrations, setIllustrations] = useState<Record<string, IllustrationState>>({});
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Initialize synchronously from manifest - no async needed!
+  const [illustrations, setIllustrations] = useState<Record<string, IllustrationState>>(initializeFromManifest);
+  const [isInitialized] = useState(true); // Always initialized immediately
   const pendingRequests = useRef<Set<string>>(new Set());
   const requestQueue = useRef<Array<() => Promise<void>>>([]);
   const activeRequests = useRef<number>(0);
   const MAX_CONCURRENT = 3;
-
-  // Bulk preload all cached illustrations on mount
-  useEffect(() => {
-    const initializeFromCache = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('generated_illustrations')
-          .select('prompt_key, image_url');
-
-        if (error) {
-          console.error('Failed to preload illustration cache:', error);
-          setIsInitialized(true);
-          return;
-        }
-
-        if (data && data.length > 0) {
-          const cachedIllustrations: Record<string, IllustrationState> = {};
-          data.forEach(({ prompt_key, image_url }) => {
-            cachedIllustrations[prompt_key] = {
-              url: image_url,
-              isLoading: false,
-              error: null
-            };
-          });
-          setIllustrations(cachedIllustrations);
-          console.log(`Preloaded ${data.length} cached illustrations`);
-        }
-      } catch (err) {
-        console.error('Error initializing illustration cache:', err);
-      } finally {
-        setIsInitialized(true);
-      }
-    };
-
-    initializeFromCache();
-  }, []);
 
   const processQueue = useCallback(async () => {
     while (requestQueue.current.length > 0 && activeRequests.current < MAX_CONCURRENT) {
