@@ -41,6 +41,7 @@ export function useCookingLoop() {
     updateOrderStatus,
     setJudgeResult,
     setOrderReview,
+    markOrderImprovable,
     addConversationMessage,
     clearConversation,
     setActiveIngredients,
@@ -337,16 +338,30 @@ export function useCookingLoop() {
 
         setAgentStatus('expeditor', 'acting');
 
+        // Check if it's a low-confidence match (< 95%)
+        const isLowConfidenceMatch = judgeResult.match && judgeResult.confidence < 95;
+        
         addTimelineEvent({
           type: 'judge',
           agent: 'expeditor',
           content: judgeResult.match 
-            ? `✅ MATCH (${judgeResult.confidence}%): ${judgeResult.reasoning}`
+            ? isLowConfidenceMatch
+              ? `⚠️ ACCEPTED (${judgeResult.confidence}%): ${judgeResult.reasoning} - Could be improved.`
+              : `✅ MATCH (${judgeResult.confidence}%): ${judgeResult.reasoning}`
             : `❌ REJECTED (${judgeResult.confidence}%): ${judgeResult.reasoning}`,
         });
 
+        // Set judge result with improvable flag for low-confidence matches
         setJudgeResult(orderId, judgeResult);
-        updateOrderStatus(orderId, judgeResult.match ? 'verified' : 'rejected', servedDishName);
+        
+        // Update order status - mark as improvable if low confidence match
+        if (isLowConfidenceMatch) {
+          // Set both status and improvable flag
+          updateOrderStatus(orderId, 'verified', servedDishName);
+          markOrderImprovable(orderId);
+        } else {
+          updateOrderStatus(orderId, judgeResult.match ? 'verified' : 'rejected', servedDishName);
+        }
 
         // Play success or error sound based on judge result
         if (judgeResult.match) {
@@ -364,7 +379,9 @@ export function useCookingLoop() {
         // Calm, observational feedback (no "success/failure" language)
         toast(
           judgeResult.match 
-            ? 'The kitchen approves.'
+            ? isLowConfidenceMatch
+              ? 'The kitchen approves, but it could be better.'
+              : 'The kitchen approves.'
             : 'Something feels off.'
         );
       }
@@ -406,6 +423,7 @@ export function useCookingLoop() {
     updateOrderStatus,
     setJudgeResult,
     setOrderReview,
+    markOrderImprovable,
     addConversationMessage,
     clearConversation,
     setAgentStatus,

@@ -23,7 +23,8 @@ interface KitchenContextType {
   updateOrderStatus: (orderId: string, status: Order['status'], servedDish?: string) => void;
   setJudgeResult: (orderId: string, result: Order['judgeResult']) => void;
   setOrderReview: (orderId: string, review: CustomerReview) => void;
-  recookOrder: (orderId: string) => void;
+  markOrderImprovable: (orderId: string) => void;
+  recookOrder: (orderId: string, feedback?: string) => void;
   
   // Timeline
   timeline: TimelineEvent[];
@@ -137,7 +138,15 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     ));
   }, []);
 
-  const recookOrder = useCallback((orderId: string) => {
+  const markOrderImprovable = useCallback((orderId: string) => {
+    setOrders(prev => prev.map(order => 
+      order.id === orderId 
+        ? { ...order, improvable: true }
+        : order
+    ));
+  }, []);
+
+  const recookOrder = useCallback((orderId: string, feedback?: string) => {
     setOrders(prev => prev.map(order => 
       order.id === orderId 
         ? { 
@@ -149,13 +158,17 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
               {
                 servedDish: order.servedDish || '',
                 reasoning: order.judgeResult?.reasoning || '',
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                customerFeedback: feedback,
               }
             ],
+            // Store feedback for next attempt
+            customerFeedback: feedback,
             // Clear previous attempt data
             judgeResult: undefined,
             servedDish: undefined,
             review: undefined,
+            improvable: undefined,
           }
         : order
     ));
@@ -219,6 +232,7 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     updateOrderStatus,
     setJudgeResult,
     setOrderReview,
+    markOrderImprovable,
     recookOrder,
     timeline,
     addTimelineEvent,
