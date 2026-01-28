@@ -1,122 +1,204 @@
 
 
-# Add Recook Function & Verify Agent Pipeline
+# Enhanced Recook & Feedback Loop with Cuisine-Aware Recipe Search
 
-## Current State Analysis
+## Overview
 
-### Recook Function
-The backend logic for recooking already exists in `KitchenContext.tsx`:
-- `recookOrder(orderId)` resets a dish to `not_started` status
-- Tracks `recookCount` for attempt numbering
-- Preserves `previousAttempts` array with failed dish details
+Improve the recook system to be smarter about cuisine context and allow customer feedback to guide subsequent cooking attempts. When confidence is below 95%, automatically offer recooking with customer input.
 
-**Missing**: The UI for rejected dishes doesn't expose the recook button. Rejected dishes go to `DishesArchive` but there's no way to retry them.
+---
 
-### Agent System Status
+## Key Features
 
-| Agent | Edge Function | Status |
-|-------|---------------|--------|
-| Chef de Cuisine (cooking-agent) | 384 lines, 102 cooking tools | Working - uses Gemini 3 Flash, function calling |
-| Sous Chef (alchemy-agent) | 203 lines | Working - determines transformation results with tool calling |
-| Expeditor (judge-agent) | 160 lines | Working - semantic validation with tool calling |
+### 1. Cuisine Detection & Context
 
-All three agents are properly implemented with:
-- Lovable AI Gateway integration
-- Tool calling (function calling) for structured output
-- Fallback parsing if tool calls fail
-- Rate limit handling (429/402)
+Detect cuisine type from dish names and provide cuisine-specific cooking guidance on recook attempts.
+
+**Cuisine Categories (from existing dish catalog):**
+- **Malaysian**: Nasi Lemak, Laksa, Char Kway Teow, Rendang, etc.
+- **Thai**: Pad Thai, Tom Yum, Green Curry, Khao Soi, etc.
+- **Vietnamese**: Pho, Banh Mi, Goi Cuon, Bun Bo Hue, etc.
+- **Indonesian**: Nasi Goreng, Soto Ayam, Gudeg, Rijsttafel, etc.
+- **Generic**: French, Italian, Japanese, etc.
+
+### 2. Customer Feedback Input
+
+Allow customers to add feedback when requesting a recook. This feedback gets incorporated into the Chef de Cuisine's context for the next attempt.
+
+### 3. Auto-Recook Prompt for Low Confidence
+
+When the Expeditor returns a match with confidence below 95%, automatically show a "Request Recook" option with feedback input, even for technically "matched" dishes.
 
 ---
 
 ## Implementation Plan
 
-### 1. Add Recook Button for Rejected Dishes
+### File Changes Summary
 
-**File: `src/components/kitchen/DishesArchive.tsx`**
-
-Add a "Recook" button that appears only for rejected dishes. When clicked:
-- Calls `recookOrder(orderId)` from KitchenContext
-- The dish moves back to the OrderQueue with `status: 'not_started'`
-- User can then click "Summon" to retry
-
-The button should:
-- Only appear for `status === 'rejected'`
-- Be styled subtly (secondary variant)
-- Show attempt count if recooking
-
-### 2. Enhance Cooking Agent with Previous Attempt Context
-
-**File: `supabase/functions/cooking-agent/index.ts`**
-
-When recooking, the agent should know why the previous attempt failed. Update the system prompt to include:
-- Previous attempt information from the order object
-- The reasoning from the judge that rejected it
-- A hint to try a different approach
-
-This helps the Chef de Cuisine avoid making the same mistake twice.
-
-### 3. Add Visual Feedback for Recook Attempts
-
-**File: `src/components/kitchen/OrderCard.tsx`**
-
-The attempt indicator (`#{order.recookCount + 1}`) already exists but only shows when `recookCount > 0`. Verify this displays correctly when a dish returns to the queue after recooking.
+| File | Purpose |
+|------|---------|
+| `src/lib/cuisineDetector.ts` | New utility to detect cuisine from dish name |
+| `src/lib/types.ts` | Add `customerFeedback` field to Order and PreviousAttempt |
+| `src/context/KitchenContext.tsx` | Update `recookOrder` to accept optional feedback |
+| `src/components/kitchen/DishesArchive.tsx` | Add feedback input dialog for recook |
+| `src/components/kitchen/RecookDialog.tsx` | New component for recook feedback form |
+| `supabase/functions/cooking-agent/index.ts` | Add cuisine context + customer feedback to prompt |
+| `src/hooks/useCookingLoop.ts` | Auto-offer recook for < 95% confidence matches |
 
 ---
 
 ## Technical Details
 
-### DishesArchive Updates
+### 1. Cuisine Detector Utility
+
+**New File: `src/lib/cuisineDetector.ts`**
 
 ```text
-For each rejected dish:
-├── Current: Shows "Something felt off." text
-└── New: Add "Try Again" button that:
-    ├── Calls recookOrder(dish.id)
-    ├── Shows toast: "Dish returned to orders"
-    └── Triggers re-render as dish moves to OrderQueue
+Function: detectCuisine(dishName: string) => CuisineInfo
+
+Returns:
+- type: 'malaysian' | 'thai' | 'vietnamese' | 'indonesian' | 'japanese' | 'french' | 'italian' | 'generic'
+- region: 'southeast_asian' | 'east_asian' | 'european' | 'american' | 'other'
+- cookingHints: string[] (cuisine-specific techniques and flavor profiles)
+
+Example:
+detectCuisine("Nasi Lemak Ayam")
+=> {
+  type: 'malaysian',
+  region: 'southeast_asian',
+  cookingHints: [
+    "Use coconut milk for rice",
+    "Include sambal, fried anchovies, peanuts",
+    "Aromatic with pandan leaves"
+  ]
+}
 ```
 
-### Cooking Agent Context Enhancement
+### 2. Type Updates
 
-Update the system prompt construction to check for previousAttempts:
+**File: `src/lib/types.ts`**
+
+Add new fields:
 
 ```text
-Current prompt:
-"ORDER TO FULFILL: {emoji} {dishName}"
+interface PreviousAttempt {
+  servedDish: string;
+  reasoning: string;
+  timestamp: number;
+  customerFeedback?: string;  // NEW: What the customer wanted changed
+}
 
-Enhanced prompt (when recooking):
-"ORDER TO FULFILL: {emoji} {dishName}
-PREVIOUS ATTEMPTS:
-- Attempt 1: Served '{servedDish}' - Rejected because: {reasoning}
-Please try a different approach this time."
+interface Order {
+  ...existing fields...
+  customerFeedback?: string;  // NEW: Feedback for next attempt
+}
 ```
 
-### Agent Names Consistency
+### 3. Enhanced Recook Context
 
-Update the ChefsSection labels to match the specification:
-- "The Alchemist Unit" → "Chef de Cuisine"
-- "The Transmuter Core" → "Sous Chef"  
-- "The Oracle Module" → "Expeditor"
+**File: `src/context/KitchenContext.tsx`**
+
+Update `recookOrder` function:
+
+```text
+recookOrder(orderId: string, feedback?: string)
+- Store feedback in order.customerFeedback
+- Add feedback to previousAttempts array entry
+```
+
+### 4. Recook Dialog Component
+
+**New File: `src/components/kitchen/RecookDialog.tsx`**
+
+A dialog that appears when user clicks "Try Again":
+- Shows what was served vs. what was ordered
+- Shows the Expeditor's reasoning for rejection
+- Text input for customer feedback (optional)
+- "Just Retry" button (no feedback)
+- "Retry with Notes" button (with feedback)
+
+### 5. DishesArchive Updates
+
+**File: `src/components/kitchen/DishesArchive.tsx`**
+
+Changes:
+- Replace direct `recookOrder` call with dialog trigger
+- Show RecookDialog when "Try Again" is clicked
+- For low-confidence matches (< 95%), add subtle "Request Improvement" option
+
+### 6. Cooking Agent Cuisine-Aware Prompt
+
+**File: `supabase/functions/cooking-agent/index.ts`**
+
+Enhanced system prompt when recooking:
+
+```text
+ORDER TO FULFILL: 🍚 Nasi Lemak Ayam
+
+CUISINE CONTEXT: Malaysian (Southeast Asian)
+- Cook rice with coconut milk and pandan
+- Traditional components: sambal, anchovies, peanuts, cucumber, egg
+- Balance of spicy, savory, and aromatic flavors
+
+PREVIOUS ATTEMPTS (FAILED):
+- Attempt 1: Served "Coconut Rice with Chicken" - Rejected because: Missing key Malaysian components like sambal
+
+CUSTOMER FEEDBACK:
+"Please include proper sambal and don't forget the fried anchovies"
+
+IMPORTANT: Consider the cuisine-specific techniques and customer feedback. Try a more authentic approach this time.
+```
+
+### 7. Auto-Prompt for Low Confidence
+
+**File: `src/hooks/useCookingLoop.ts`**
+
+After judge evaluation:
+- If `match: true` but `confidence < 95`:
+  - Mark as `verified` but show subtle improvement prompt
+  - Add timeline event: "Dish accepted, but could be improved"
+  - Store a flag on the order: `improvable: true`
+
+**File: `src/components/kitchen/DishesArchive.tsx`**
+
+- For dishes with `improvable: true`, show "Request Improvement" option
+- Opens same RecookDialog but with gentler messaging
 
 ---
 
-## File Changes Summary
+## User Flow Examples
 
-| File | Changes |
-|------|---------|
-| `src/components/kitchen/DishesArchive.tsx` | Add recook button for rejected dishes |
-| `supabase/functions/cooking-agent/index.ts` | Include previous attempts in system prompt when recooking |
-| `src/components/kitchen/ChefsSection.tsx` | Update agent display names to match specification |
+### Flow 1: Standard Rejection with Feedback
+
+1. User orders "Beef Rendang"
+2. Chef serves "Beef Curry" (wrong dish)
+3. Expeditor rejects: "Missing dry-fried texture characteristic of rendang"
+4. Dish appears in archive with "Try Again" button
+5. User clicks "Try Again"
+6. Dialog opens showing rejection reason
+7. User adds: "Please cook it longer until dry"
+8. User clicks "Retry with Notes"
+9. Dish returns to queue with feedback attached
+10. Chef receives cuisine context (Indonesian) + feedback in prompt
+11. Chef tries different approach with extended cooking time
+
+### Flow 2: Low Confidence Match with Improvement
+
+1. User orders "Pad Thai"
+2. Chef serves "Thai Stir-fried Noodles"
+3. Expeditor approves at 82% confidence: "Similar but lacks traditional tamarind tanginess"
+4. Dish appears verified but with subtle "Could be better" indicator
+5. User can optionally request improvement
+6. If requested, same recook flow with feedback input
 
 ---
 
-## Expected Behavior After Implementation
+## Expected Improvements
 
-1. User cooks a dish → rejected by Expeditor
-2. Dish appears in "Dishes Served" with "Try Again" button
-3. User clicks "Try Again"
-4. Dish moves back to OrderQueue with attempt #2 indicator
-5. User clicks "Summon" to retry
-6. Chef de Cuisine sees the previous failure and tries a different approach
-7. If successful, Expeditor approves and customer review is generated
+| Scenario | Before | After |
+|----------|--------|-------|
+| Malaysian dish recook | Generic retry | Cuisine-aware hints (coconut milk, sambal, pandan) |
+| Customer complaint | No way to specify | Feedback input dialog |
+| 85% confidence match | Treated as success | Option to request improvement |
+| 3rd attempt on same dish | Same approach | Accumulated context from all failures + feedback |
 
