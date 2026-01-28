@@ -1,7 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { TimelineEvent } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 // Check if this is a discovery event
 const isDiscoveryEvent = (event: TimelineEvent): boolean => {
@@ -46,6 +48,7 @@ const DiscoveryIndicator: React.FC = () => (
 export const KitchenLog: React.FC = () => {
   const { timeline, cookingState } = useKitchen();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Auto-scroll to latest event
   useEffect(() => {
@@ -58,18 +61,29 @@ export const KitchenLog: React.FC = () => {
   }, [timeline]);
   
   return (
-    <div className="rounded-2xl overflow-hidden border border-border card-elevated h-full flex flex-col">
+    <div className={`rounded-2xl overflow-hidden border border-border card-elevated flex flex-col transition-all ${isExpanded ? 'h-[500px]' : 'h-full min-h-[200px]'}`}>
       {/* Header bar */}
       <div className="flex justify-between items-center px-4 py-2.5 bg-muted border-b border-border flex-shrink-0">
         <h2 className="font-bold uppercase text-xs tracking-wide">Kitchen Log</h2>
-        <span className="text-[10px] text-muted-foreground font-mono">
-          count: {timeline.length.toString().padStart(4, '0')}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground font-mono">
+            count: {timeline.length.toString().padStart(4, '0')}
+          </span>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6"
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? "Collapse log" : "Expand log"}
+          >
+            {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
+        </div>
       </div>
       
       {/* Terminal body */}
       <div ref={scrollRef} className="terminal-bg flex-1">
-        <ScrollArea className="h-full min-h-[200px]">
+        <ScrollArea className="h-full">
             <div className="p-4 font-mono text-sm">
             {timeline.length === 0 ? (
               <div className="terminal-text-muted italic">
