@@ -1,204 +1,223 @@
 
 
-# Enhanced Recook & Feedback Loop with Cuisine-Aware Recipe Search
+# Fix Bak Kut Teh Cooking Issues & Enhance Discovery System
 
-## Overview
+## Problems Identified
 
-Improve the recook system to be smarter about cuisine context and allow customer feedback to guide subsequent cooking attempts. When confidence is below 95%, automatically offer recooking with customer input.
+### 1. AI Hallucination of Ingredient IDs
+The Chef de Cuisine (cooking-agent) sometimes generates non-existent ingredient IDs like `garlicAddress` instead of `garlic`. This causes the cooking loop to create placeholder ingredients that don't match anything in inventory, breaking the recipe flow.
 
----
+### 2. Repetitive Action Loop (No Progress Detection)
+The agent gets stuck repeating the same action (e.g., `crush(black_pepper)` 4-5 times) without progressing to the next step. There's no loop detection to identify this pattern and force progression.
 
-## Key Features
+### 3. Missing Southeast Asian Spices
+The base inventory lacks essential ingredients for authentic Bak Kut Teh and other Southeast Asian dishes:
+- Star anise, cloves, cinnamon sticks (Chinese 5-spice base)
+- White peppercorns (key for Bak Kut Teh broth)
+- Dang gui (angelica root)
+- Dried shrimp, shallots
+- Galangal, lemongrass, kaffir lime leaves
 
-### 1. Cuisine Detection & Context
-
-Detect cuisine type from dish names and provide cuisine-specific cooking guidance on recook attempts.
-
-**Cuisine Categories (from existing dish catalog):**
-- **Malaysian**: Nasi Lemak, Laksa, Char Kway Teow, Rendang, etc.
-- **Thai**: Pad Thai, Tom Yum, Green Curry, Khao Soi, etc.
-- **Vietnamese**: Pho, Banh Mi, Goi Cuon, Bun Bo Hue, etc.
-- **Indonesian**: Nasi Goreng, Soto Ayam, Gudeg, Rijsttafel, etc.
-- **Generic**: French, Italian, Japanese, etc.
-
-### 2. Customer Feedback Input
-
-Allow customers to add feedback when requesting a recook. This feedback gets incorporated into the Chef de Cuisine's context for the next attempt.
-
-### 3. Auto-Recook Prompt for Low Confidence
-
-When the Expeditor returns a match with confidence below 95%, automatically show a "Request Recook" option with feedback input, even for technically "matched" dishes.
+### 4. Discovered Ingredients Not Persisting
+Currently, new ingredients discovered during cooking (via alchemy-agent) are only added to the session-local inventory. When `isDiscovery: true`, they are added to persistent inventory - but this system could be more robust.
 
 ---
 
 ## Implementation Plan
 
-### File Changes Summary
+### Phase 1: Ingredient ID Validation & Normalization
 
-| File | Purpose |
-|------|---------|
-| `src/lib/cuisineDetector.ts` | New utility to detect cuisine from dish name |
-| `src/lib/types.ts` | Add `customerFeedback` field to Order and PreviousAttempt |
-| `src/context/KitchenContext.tsx` | Update `recookOrder` to accept optional feedback |
-| `src/components/kitchen/DishesArchive.tsx` | Add feedback input dialog for recook |
-| `src/components/kitchen/RecookDialog.tsx` | New component for recook feedback form |
-| `supabase/functions/cooking-agent/index.ts` | Add cuisine context + customer feedback to prompt |
-| `src/hooks/useCookingLoop.ts` | Auto-offer recook for < 95% confidence matches |
+**File: `supabase/functions/cooking-agent/index.ts`**
+
+Add a post-processing step to validate and normalize ingredient IDs before returning:
+
+| Check | Action |
+|-------|--------|
+| ID contains garbage (`Address`, `123`, special chars) | Extract base word and match to inventory |
+| ID not in inventory but similar exists | Fuzzy match to closest inventory item |
+| ID is ingredient name (not ID) | Convert to proper snake_case ID |
+
+```text
+Example transformations:
+- "garlicAddress" → "garlic"
+- "Black Pepper" → "black_pepper"  
+- "pork ribs" → "pork" (closest match)
+```
+
+### Phase 2: Loop Detection in Cooking Loop
+
+**File: `src/hooks/useCookingLoop.ts`**
+
+Track recent actions and detect repetitive patterns:
+
+```text
+New tracking:
+- actionHistory: Array of { action, ingredients } for last 5 iterations
+- Check if current action+ingredients matches any of last 3 actions
+- If duplicate detected:
+  - Log warning
+  - Add context to conversation: "You already did this. Try something different."
+  - If 3 consecutive duplicates: force-serve the last generated ingredient
+```
+
+| Counter | Behavior |
+|---------|----------|
+| 1st repeat | Continue, add warning to history |
+| 2nd repeat | Add explicit instruction to try different approach |
+| 3rd repeat | Auto-serve last generated ingredient |
+
+### Phase 3: Expand Southeast Asian Spice Inventory
+
+**File: `src/data/ingredients.ts`**
+
+Add 15 new Southeast Asian ingredients:
+
+| Category | New Ingredients |
+|----------|-----------------|
+| Spices | star_anise, cloves, white_pepper, dang_gui (angelica), cinnamon_stick, five_spice_powder |
+| Aromatics | galangal, lemongrass, kaffir_lime_leaf, pandan_leaf, shallot |
+| Proteins | pork_ribs, dried_shrimp |
+| Sauces | dark_soy_sauce, oyster_sauce |
+
+### Phase 4: Robust Discovery Persistence
+
+**File: `src/hooks/useCookingLoop.ts`**
+
+Enhance the discovery system to properly persist to global inventory:
+
+Current flow:
+```text
+alchemyResult.isDiscovery === true → addToInventory(newIngredient)
+```
+
+Enhanced flow:
+```text
+1. alchemyResult.isDiscovery === true
+2. Check if ingredient ID already exists in global inventory (avoid duplicates)
+3. If new: addToInventory(newIngredient)
+4. Show toast notification: "New ingredient discovered: {name}"
+5. Timeline event already exists (✨ NEW DISCOVERY)
+```
+
+**File: `src/context/KitchenContext.tsx`**
+
+Update `addToInventory` to check for duplicates:
+
+```text
+addToInventory(ingredient):
+  if (!inventory.some(i => i.id === ingredient.id)):
+    setInventory([...inventory, ingredient])
+```
 
 ---
 
 ## Technical Details
 
-### 1. Cuisine Detector Utility
-
-**New File: `src/lib/cuisineDetector.ts`**
+### Ingredient ID Normalizer (cooking-agent)
 
 ```text
-Function: detectCuisine(dishName: string) => CuisineInfo
-
-Returns:
-- type: 'malaysian' | 'thai' | 'vietnamese' | 'indonesian' | 'japanese' | 'french' | 'italian' | 'generic'
-- region: 'southeast_asian' | 'east_asian' | 'european' | 'american' | 'other'
-- cookingHints: string[] (cuisine-specific techniques and flavor profiles)
-
-Example:
-detectCuisine("Nasi Lemak Ayam")
-=> {
-  type: 'malaysian',
-  region: 'southeast_asian',
-  cookingHints: [
-    "Use coconut milk for rice",
-    "Include sambal, fried anchovies, peanuts",
-    "Aromatic with pandan leaves"
-  ]
+function normalizeIngredientId(rawId: string, inventory: any[]): string {
+  // 1. Clean garbage patterns
+  let cleaned = rawId
+    .replace(/Address|[0-9]+|[^a-zA-Z_\s]/g, '')
+    .toLowerCase()
+    .trim();
+  
+  // 2. Check direct match
+  if (inventory.some(i => i.id === cleaned)) return cleaned;
+  
+  // 3. Convert spaces to underscores
+  const snakeCase = cleaned.replace(/\s+/g, '_');
+  if (inventory.some(i => i.id === snakeCase)) return snakeCase;
+  
+  // 4. Fuzzy match: find ingredient containing this word
+  const fuzzyMatch = inventory.find(i => 
+    i.id.includes(cleaned) || i.name.toLowerCase().includes(cleaned)
+  );
+  if (fuzzyMatch) return fuzzyMatch.id;
+  
+  // 5. Return original if no match (let the placeholder logic handle it)
+  return rawId;
 }
 ```
 
-### 2. Type Updates
-
-**File: `src/lib/types.ts`**
-
-Add new fields:
+### Loop Detection Logic (useCookingLoop)
 
 ```text
-interface PreviousAttempt {
-  servedDish: string;
-  reasoning: string;
-  timestamp: number;
-  customerFeedback?: string;  // NEW: What the customer wanted changed
+interface ActionRecord {
+  action: string;
+  ingredients: string[];
 }
 
-interface Order {
-  ...existing fields...
-  customerFeedback?: string;  // NEW: Feedback for next attempt
+// Track last 5 actions
+const actionHistory: ActionRecord[] = [];
+
+// In cooking loop, after getting cookingResponse:
+const currentAction = { 
+  action: actionName, 
+  ingredients: ingredientIds.sort() 
+};
+
+const isRepeat = actionHistory.some(prev => 
+  prev.action === currentAction.action && 
+  JSON.stringify(prev.ingredients) === JSON.stringify(currentAction.ingredients)
+);
+
+if (isRepeat) {
+  repeatCount++;
+  if (repeatCount >= 3) {
+    // Force serve
+  } else {
+    // Add context to conversation: "Don't repeat. Try different."
+  }
+} else {
+  repeatCount = 0;
 }
+
+actionHistory.push(currentAction);
+if (actionHistory.length > 5) actionHistory.shift();
 ```
-
-### 3. Enhanced Recook Context
-
-**File: `src/context/KitchenContext.tsx`**
-
-Update `recookOrder` function:
-
-```text
-recookOrder(orderId: string, feedback?: string)
-- Store feedback in order.customerFeedback
-- Add feedback to previousAttempts array entry
-```
-
-### 4. Recook Dialog Component
-
-**New File: `src/components/kitchen/RecookDialog.tsx`**
-
-A dialog that appears when user clicks "Try Again":
-- Shows what was served vs. what was ordered
-- Shows the Expeditor's reasoning for rejection
-- Text input for customer feedback (optional)
-- "Just Retry" button (no feedback)
-- "Retry with Notes" button (with feedback)
-
-### 5. DishesArchive Updates
-
-**File: `src/components/kitchen/DishesArchive.tsx`**
-
-Changes:
-- Replace direct `recookOrder` call with dialog trigger
-- Show RecookDialog when "Try Again" is clicked
-- For low-confidence matches (< 95%), add subtle "Request Improvement" option
-
-### 6. Cooking Agent Cuisine-Aware Prompt
-
-**File: `supabase/functions/cooking-agent/index.ts`**
-
-Enhanced system prompt when recooking:
-
-```text
-ORDER TO FULFILL: 🍚 Nasi Lemak Ayam
-
-CUISINE CONTEXT: Malaysian (Southeast Asian)
-- Cook rice with coconut milk and pandan
-- Traditional components: sambal, anchovies, peanuts, cucumber, egg
-- Balance of spicy, savory, and aromatic flavors
-
-PREVIOUS ATTEMPTS (FAILED):
-- Attempt 1: Served "Coconut Rice with Chicken" - Rejected because: Missing key Malaysian components like sambal
-
-CUSTOMER FEEDBACK:
-"Please include proper sambal and don't forget the fried anchovies"
-
-IMPORTANT: Consider the cuisine-specific techniques and customer feedback. Try a more authentic approach this time.
-```
-
-### 7. Auto-Prompt for Low Confidence
-
-**File: `src/hooks/useCookingLoop.ts`**
-
-After judge evaluation:
-- If `match: true` but `confidence < 95`:
-  - Mark as `verified` but show subtle improvement prompt
-  - Add timeline event: "Dish accepted, but could be improved"
-  - Store a flag on the order: `improvable: true`
-
-**File: `src/components/kitchen/DishesArchive.tsx`**
-
-- For dishes with `improvable: true`, show "Request Improvement" option
-- Opens same RecookDialog but with gentler messaging
 
 ---
 
-## User Flow Examples
+## File Changes Summary
 
-### Flow 1: Standard Rejection with Feedback
-
-1. User orders "Beef Rendang"
-2. Chef serves "Beef Curry" (wrong dish)
-3. Expeditor rejects: "Missing dry-fried texture characteristic of rendang"
-4. Dish appears in archive with "Try Again" button
-5. User clicks "Try Again"
-6. Dialog opens showing rejection reason
-7. User adds: "Please cook it longer until dry"
-8. User clicks "Retry with Notes"
-9. Dish returns to queue with feedback attached
-10. Chef receives cuisine context (Indonesian) + feedback in prompt
-11. Chef tries different approach with extended cooking time
-
-### Flow 2: Low Confidence Match with Improvement
-
-1. User orders "Pad Thai"
-2. Chef serves "Thai Stir-fried Noodles"
-3. Expeditor approves at 82% confidence: "Similar but lacks traditional tamarind tanginess"
-4. Dish appears verified but with subtle "Could be better" indicator
-5. User can optionally request improvement
-6. If requested, same recook flow with feedback input
+| File | Changes |
+|------|---------|
+| `supabase/functions/cooking-agent/index.ts` | Add ingredient ID normalization after parsing function call |
+| `src/hooks/useCookingLoop.ts` | Add loop detection, duplicate action handling, discovery toast |
+| `src/data/ingredients.ts` | Add 15 Southeast Asian ingredients |
+| `src/context/KitchenContext.tsx` | Duplicate check in addToInventory |
 
 ---
 
-## Expected Improvements
+## Expected Results After Implementation
 
-| Scenario | Before | After |
-|----------|--------|-------|
-| Malaysian dish recook | Generic retry | Cuisine-aware hints (coconut milk, sambal, pandan) |
-| Customer complaint | No way to specify | Feedback input dialog |
-| 85% confidence match | Treated as success | Option to request improvement |
-| 3rd attempt on same dish | Same approach | Accumulated context from all failures + feedback |
+### Before
+```text
+1. Chef calls crush(["garlicAddress", "black_pepper"])
+2. "garlicAddress" not found → placeholder created
+3. Alchemy only receives black_pepper
+4. Result: "Ground Black Pepper"
+5. Chef repeats crush(["garlicAddress", "black_pepper"]) again
+6. Loop continues until max iterations
+7. Auto-serve incorrect dish
+```
+
+### After
+```text
+1. Chef calls crush(["garlicAddress", "black_pepper"])
+2. Normalizer: "garlicAddress" → "garlic"
+3. Both garlic + black_pepper sent to Alchemy
+4. Result: "Crushed Garlic Pepper Paste"
+5. Chef proceeds to next step (simmer with pork_ribs)
+6. Loop detection prevents repeating same action
+7. Authentic Bak Kut Teh served with proper broth
+```
+
+### Bak Kut Teh Specific Improvements
+- **star_anise**, **cloves**, **white_pepper**, **dang_gui** now available in inventory
+- Cuisine detector already provides Malaysian hints
+- Chef can build authentic herbal broth base
+- Pork ribs available for slow simmering
 
