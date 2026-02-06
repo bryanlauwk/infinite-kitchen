@@ -1,25 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { errorResponse, handleGatewayError } from "../_shared/errors.ts";
+import { validateAlchemyAgentInput } from "../_shared/validation.ts";
+import { requireApiKey, callAIGateway } from "../_shared/api-client.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
-    const { action, ingredients } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    const body = await req.json();
+    const { action, ingredients } = validateAlchemyAgentInput(body);
+    const apiKey = requireApiKey();
 
-    // Build ingredient description
-    const ingredientDesc = ingredients.map((i: { emoji: string; name: string }) => 
+    const ingredientDesc = ingredients.map((i) =>
       `${i.emoji} ${i.name}`
     ).join(" + ");
 
@@ -50,133 +46,87 @@ Be creative but realistic. Consider:
 - Give a brief poetic description (under 10 words)
 
 Examples:
-- crack([🥚 egg]) → {resultName: "Raw Egg", isDiscovery: false} - just opened the shell
-- separate([🥚 raw egg]) → {resultName: "Egg Yolk", isDiscovery: true} - reveals hidden component
-- clarify([🧈 butter]) → {resultName: "Ghee", isDiscovery: true} - extracts pure ingredient
-- whisk([🥚 raw egg]) → {resultName: "Whisked Egg", isDiscovery: false} - cooking step
-- pan_fry([🍳 whisked egg]) → {resultName: "Scrambled Eggs", isDiscovery: false} - cooking step
-- toss([🍎 fruit]) → {resultName: "Fruit Salad", isDiscovery: false} - combined dish`;
+- crack([🥚 egg]) → {resultName: "Raw Egg", isDiscovery: false}
+- separate([🥚 raw egg]) → {resultName: "Egg Yolk", isDiscovery: true}
+- clarify([🧈 butter]) → {resultName: "Ghee", isDiscovery: true}
+- whisk([🥚 raw egg]) → {resultName: "Whisked Egg", isDiscovery: false}
+- pan_fry([🍳 whisked egg]) → {resultName: "Scrambled Eggs", isDiscovery: false}
+- toss([🍎 fruit]) → {resultName: "Fruit Salad", isDiscovery: false}`;
 
-    const userPrompt = `Action: ${action}
-Ingredients: ${ingredientDesc}
-
-What is the result?`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_result",
-              description: "Create the result of the alchemy action",
-              parameters: {
-                type: "object",
-                properties: {
-                  resultName: {
-                    type: "string",
-                    description: "Human readable name for the result (e.g., 'Scrambled Eggs', 'Melted Butter')"
-                  },
-                  resultId: {
-                    type: "string",
-                    description: "Snake_case ID for the result (e.g., 'scrambled_eggs', 'melted_butter')"
-                  },
-                  emoji: {
-                    type: "string",
-                    description: "Single emoji representing the result"
-                  },
-                  description: {
-                    type: "string",
-                    description: "Brief poetic description of the result (under 10 words)"
-                  },
-                  isDiscovery: {
-                    type: "boolean",
-                    description: "Almost always FALSE. Only TRUE when revealing hidden sub-components (like separating egg → yolk/white, or clarifying butter → ghee). FALSE for all cooking steps, dishes, combinations, and transformations."
-                  }
-                },
-                required: ["resultName", "resultId", "emoji", "description", "isDiscovery"]
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "create_result" } }
-      }),
+    const response = await callAIGateway(apiKey, {
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Action: ${action}\nIngredients: ${ingredientDesc}\n\nWhat is the result?` },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "create_result",
+            description: "Create the result of the alchemy action",
+            parameters: {
+              type: "object",
+              properties: {
+                resultName: { type: "string", description: "Human readable name for the result" },
+                resultId: { type: "string", description: "Snake_case ID for the result" },
+                emoji: { type: "string", description: "Single emoji representing the result" },
+                description: { type: "string", description: "Brief poetic description (under 10 words)" },
+                isDiscovery: { type: "boolean", description: "Almost always FALSE. Only TRUE for component extraction." },
+              },
+              required: ["resultName", "resultId", "emoji", "description", "isDiscovery"],
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "create_result" } },
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: "Rate limit exceeded. Please try again in a moment." 
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: "API credits exhausted. Please add credits to continue." 
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
+      const gatewayErr = handleGatewayError(response, corsHeaders);
+      if (gatewayErr) return gatewayErr;
+      console.error("AI Gateway error:", response.status);
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("AI Response:", JSON.stringify(data, null, 2));
-    
     const toolCalls = data.choices?.[0]?.message?.tool_calls;
     let result;
-    
+
     if (toolCalls && toolCalls.length > 0) {
-      // Parse from tool call
-      result = JSON.parse(toolCalls[0].function.arguments);
-    } else {
-      // Fallback: try to parse from text content
+      try {
+        result = JSON.parse(toolCalls[0].function.arguments);
+      } catch (parseError) {
+        console.error("Failed to parse tool call arguments:", parseError);
+      }
+    }
+
+    if (!result) {
       const content = data.choices?.[0]?.message?.content;
-      console.log("No tool call, trying to parse content:", content);
-      
       if (content) {
-        // Try to extract JSON from content
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             result = JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            console.error("Failed to parse JSON from content:", e);
+          } catch {
+            // Fall through to default
           }
         }
       }
-      
-      // If still no result, generate a sensible default
-      if (!result) {
-        const actionVerb = action.replace(/_/g, ' ');
-        const ingredientNames = ingredients.map((i: { name: string }) => i.name).join(' and ');
-        result = {
-          resultName: `${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}ed ${ingredientNames}`,
-          resultId: `${action}_${ingredients.map((i: { name: string }) => i.name.toLowerCase().replace(/\s+/g, '_')).join('_')}`,
-          emoji: ingredients[0]?.emoji || '🍳',
-          description: `${ingredientNames} after ${actionVerb}ing`,
-          isDiscovery: false
-        };
-        console.log("Using fallback result:", result);
-      }
     }
 
-    // Ensure isDiscovery has a default value if missing
+    if (!result) {
+      const actionVerb = action.replace(/_/g, ' ');
+      const ingredientNames = ingredients.map((i) => i.name).join(' and ');
+      result = {
+        resultName: `${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}ed ${ingredientNames}`,
+        resultId: `${action}_${ingredients.map((i) => i.name.toLowerCase().replace(/\s+/g, '_')).join('_')}`,
+        emoji: ingredients[0]?.emoji || '🍳',
+        description: `${ingredientNames} after ${actionVerb}ing`,
+        isDiscovery: false,
+      };
+    }
+
     if (result.isDiscovery === undefined) {
       result.isDiscovery = false;
     }
@@ -186,18 +136,17 @@ What is the result?`;
       resultId: result.resultId,
       emoji: result.emoji,
       description: result.description,
-      isDiscovery: result.isDiscovery
+      isDiscovery: result.isDiscovery,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
     console.error("Alchemy agent error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(
+      error instanceof Error ? error.message : "Unknown error",
+      500,
+      corsHeaders,
+    );
   }
 });

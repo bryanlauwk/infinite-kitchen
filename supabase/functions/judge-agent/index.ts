@@ -1,22 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { errorResponse, handleGatewayError } from "../_shared/errors.ts";
+import { validateJudgeAgentInput } from "../_shared/validation.ts";
+import { requireApiKey, callAIGateway } from "../_shared/api-client.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
-    const { servedDish, orderName } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    const body = await req.json();
+    const { servedDish, orderName } = validateJudgeAgentInput(body);
+    const apiKey = requireApiKey();
 
     const systemPrompt = `You are a fair but strict food judge. Your job is to determine if a served dish matches the customer's order.
 
@@ -29,87 +26,50 @@ You should use SEMANTIC SIMILARITY, not exact string matching:
 
 Be generous with variations and additions, but strict about fundamentally different dishes.`;
 
-    const userPrompt = `ORDER: "${orderName}"
-SERVED: "${servedDish}"
-
-Does the served dish fulfill the order?`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "judge_dish",
-              description: "Provide judgment on whether the served dish matches the order",
-              parameters: {
-                type: "object",
-                properties: {
-                  match: {
-                    type: "boolean",
-                    description: "Whether the served dish fulfills the order"
-                  },
-                  confidence: {
-                    type: "number",
-                    description: "Confidence score from 0-100"
-                  },
-                  reasoning: {
-                    type: "string",
-                    description: "Brief explanation of the judgment (under 30 words)"
-                  }
-                },
-                required: ["match", "confidence", "reasoning"]
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "judge_dish" } }
-      }),
+    const response = await callAIGateway(apiKey, {
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `ORDER: "${orderName}"\nSERVED: "${servedDish}"\n\nDoes the served dish fulfill the order?` },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "judge_dish",
+            description: "Provide judgment on whether the served dish matches the order",
+            parameters: {
+              type: "object",
+              properties: {
+                match: { type: "boolean", description: "Whether the served dish fulfills the order" },
+                confidence: { type: "number", description: "Confidence score from 0-100" },
+                reasoning: { type: "string", description: "Brief explanation of the judgment (under 30 words)" },
+              },
+              required: ["match", "confidence", "reasoning"],
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "judge_dish" } },
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: "Rate limit exceeded. Please try again in a moment." 
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: "API credits exhausted. Please add credits to continue." 
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
+      const gatewayErr = handleGatewayError(response, corsHeaders);
+      if (gatewayErr) return gatewayErr;
+      console.error("AI Gateway error:", response.status);
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
     const toolCalls = data.choices?.[0]?.message?.tool_calls;
-    
-    // If we got a tool call, parse it
+
     if (toolCalls && toolCalls.length > 0) {
       try {
         const result = JSON.parse(toolCalls[0].function.arguments);
         return new Response(JSON.stringify({
           match: result.match,
           confidence: result.confidence,
-          reasoning: result.reasoning
+          reasoning: result.reasoning,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -118,43 +78,36 @@ Does the served dish fulfill the order?`;
       }
     }
 
-    // Fallback: Try to parse from message content
+    // Fallback: heuristic from message content
     const content = data.choices?.[0]?.message?.content || "";
-    console.warn("No tool call from judge agent, parsing text:", content);
-    
-    // Simple heuristic based on content
     const lowerContent = content.toLowerCase();
-    const isMatch = 
-      lowerContent.includes('yes') || 
-      lowerContent.includes('match') || 
+    const isMatch =
+      lowerContent.includes('yes') ||
+      lowerContent.includes('match') ||
       lowerContent.includes('fulfills') ||
       lowerContent.includes('correct') ||
       (lowerContent.includes('similar') && !lowerContent.includes('not similar'));
-    
-    const isReject = 
+    const isReject =
       lowerContent.includes('no') ||
       lowerContent.includes('does not match') ||
       lowerContent.includes('different') ||
       lowerContent.includes('reject');
-    
-    // Determine match based on content analysis
     const match = isMatch && !isReject;
-    
+
     return new Response(JSON.stringify({
       match,
       confidence: 70,
-      reasoning: content.slice(0, 100) || (match ? "Dish appears to match the order" : "Dish does not match the order")
+      reasoning: content.slice(0, 100) || (match ? "Dish appears to match the order" : "Dish does not match the order"),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
     console.error("Judge agent error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(
+      error instanceof Error ? error.message : "Unknown error",
+      500,
+      corsHeaders,
+    );
   }
 });

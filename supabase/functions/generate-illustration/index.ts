@@ -1,51 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { errorResponse, handleGatewayError } from "../_shared/errors.ts";
+import { validateIllustrationInput } from "../_shared/validation.ts";
+import { requireApiKey, callAIGateway } from "../_shared/api-client.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { dishName, type, promptKey } = await req.json();
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-
-    // Check cache first
-    const { data: cached } = await supabase
-      .from('generated_illustrations')
-      .select('image_url')
-      .eq('prompt_key', promptKey)
-      .single();
-
-    if (cached) {
-      console.log(`Cache hit for: ${promptKey}`);
-      return new Response(JSON.stringify({ imageUrl: cached.image_url }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log(`Generating illustration for: ${dishName} (type: ${type})`);
-
-    // Build the prompt based on type
-    let prompt: string;
-    
-    if (type === 'dish') {
-      prompt = `Create a playful, vector-stylized illustration of "${dishName}" food dish.
+const illustrationPrompts: Record<string, (name: string) => string> = {
+  dish: (name) => `Create a playful, vector-stylized illustration of "${name}" food dish.
 
 CRITICAL STYLE REQUIREMENTS:
 - Cartoon/vector art style, absolutely NOT realistic or photographic
@@ -58,39 +20,36 @@ CRITICAL STYLE REQUIREMENTS:
 - Think "squishy", "juicy" app icons from early 2010s design
 - Exaggerated, cute proportions
 - Soft drop shadows for depth
-- The food should look fun and appetizing but stylized like a cartoon`;
-    } else if (type === 'chef') {
-      // Chef avatar
-      prompt = `Create a playful cartoon robot chef character mascot.
+- The food should look fun and appetizing but stylized like a cartoon`,
+
+  chef: (name) => `Create a playful cartoon robot chef character mascot.
 
 CRITICAL STYLE REQUIREMENTS:
 - Cute, friendly robot or creature design
 - Vector art style with soft gradients
 - Round, squishy shapes - NOT angular or mechanical looking
 - Warm, inviting expression with simple features
-- ${dishName} color scheme and personality
+- ${name} color scheme and personality
 - Clean pastel gradient background
 - NO text, NO labels
 - Think indie game mascot or app icon character
 - Should feel approachable and whimsical
-- Simple geometric shapes combined creatively`;
-    } else if (type === 'ingredient') {
-      // Ingredient icon
-      prompt = `Create a cute, playful vector illustration of a single "${dishName}" ingredient.
+- Simple geometric shapes combined creatively`,
+
+  ingredient: (name) => `Create a cute, playful vector illustration of a single "${name}" ingredient.
 
 CRITICAL STYLE REQUIREMENTS:
 - Cartoon/vector art style, NOT realistic
-- Soft gradients with rounded, squishy shapes  
+- Soft gradients with rounded, squishy shapes
 - Single ingredient centered, simple and iconic
 - Clean light pastel gradient background
 - NO text, NO labels, NO words
 - Think cute food app icon or emoji replacement
 - Exaggerated, friendly proportions
 - Soft drop shadows for depth
-- Small square format, centered composition`;
-    } else if (type === 'technique') {
-      // Cooking technique icon
-      prompt = `Create a playful vector icon representing the cooking technique "${dishName}".
+- Small square format, centered composition`,
+
+  technique: (name) => `Create a playful vector icon representing the cooking technique "${name}".
 
 CRITICAL STYLE REQUIREMENTS:
 - Abstract, iconic representation of the cooking action
@@ -101,76 +60,92 @@ CRITICAL STYLE REQUIREMENTS:
 - NO text, NO labels, NO words
 - Think indie game UI icon
 - Warm, inviting colors
-- Small square format, centered composition`;
-    } else {
-      prompt = `Create a playful, vector-stylized illustration of "${dishName}".
-      
+- Small square format, centered composition`,
+};
+
+function buildPrompt(dishName: string, type: string): string {
+  const builder = illustrationPrompts[type];
+  if (builder) return builder(dishName);
+
+  return `Create a playful, vector-stylized illustration of "${dishName}".
+
 CRITICAL STYLE REQUIREMENTS:
 - Cartoon/vector art style, NOT realistic
 - Soft gradients with rounded shapes
 - Clean pastel gradient background
 - NO text, NO labels`;
+}
+
+serve(async (req) => {
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
+
+  const corsHeaders = getCorsHeaders(req);
+
+  try {
+    const body = await req.json();
+    const { dishName, type, promptKey } = validateIllustrationInput(body);
+    const apiKey = requireApiKey();
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase environment variables are not configured");
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Check cache first
+    const { data: cached } = await supabase
+      .from('generated_illustrations')
+      .select('image_url')
+      .eq('prompt_key', promptKey)
+      .single();
+
+    if (cached) {
+      return new Response(JSON.stringify({ imageUrl: cached.image_url }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const prompt = buildPrompt(dishName, type);
 
     // Retry logic for image generation
     const MAX_RETRIES = 2;
     let imageDataUrl: string | null = null;
-    let lastError: string = "";
+    let lastError = "";
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        console.log(`Retry attempt ${attempt} for: ${dishName}`);
+        console.log(`Retry attempt ${attempt} for illustration: ${dishName}`);
       }
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-image",
-          messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: You MUST generate and return an image. Do not respond with text only." }],
-          modalities: ["image", "text"]
-        }),
+      const response = await callAIGateway(apiKey, {
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: You MUST generate and return an image. Do not respond with text only." }],
+        modalities: ["image", "text"],
       });
 
       if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later" }), {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        if (response.status === 402) {
-          return new Response(JSON.stringify({ error: "Payment required" }), {
-            status: 402,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        const errorText = await response.text();
-        console.error("AI gateway error:", response.status, errorText);
+        const gatewayErr = handleGatewayError(response, corsHeaders);
+        if (gatewayErr) return gatewayErr;
+        console.error("AI gateway error:", response.status);
         lastError = `AI gateway error: ${response.status}`;
-        continue; // Retry on server errors
+        continue;
       }
 
       const data = await response.json();
       imageDataUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
-      if (imageDataUrl) {
-        break; // Success, exit retry loop
-      }
-
-      console.log(`No image in response (attempt ${attempt + 1}):`, data.choices?.[0]?.message?.content?.slice(0, 100));
+      if (imageDataUrl) break;
       lastError = "No image generated";
     }
 
     if (!imageDataUrl) {
-      console.error(`Failed to generate image after ${MAX_RETRIES + 1} attempts for: ${dishName}`);
       throw new Error(lastError || "No image generated");
     }
 
-    // Extract base64 data from data URL
     const base64Match = imageDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!base64Match) {
       throw new Error("Invalid image data URL format");
@@ -180,43 +155,36 @@ CRITICAL STYLE REQUIREMENTS:
     const base64Data = base64Match[2];
     const imageBytes = decode(base64Data);
 
-    // Upload to storage bucket
     const fileName = `${promptKey}.${imageFormat}`;
     const { error: uploadError } = await supabase.storage
       .from('illustrations')
       .upload(fileName, imageBytes, {
         contentType: `image/${imageFormat}`,
-        upsert: true
+        upsert: true,
       });
 
     if (uploadError) {
-      console.error("Upload error:", uploadError);
       throw new Error(`Failed to upload image: ${uploadError.message}`);
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from('illustrations')
       .getPublicUrl(fileName);
 
     const publicUrl = urlData.publicUrl;
 
-    // Cache in database
     const { error: insertError } = await supabase
       .from('generated_illustrations')
       .insert({
         prompt_key: promptKey,
         image_url: publicUrl,
         dish_name: dishName,
-        illustration_type: type
+        illustration_type: type,
       });
 
     if (insertError) {
       console.error("Cache insert error:", insertError);
-      // Don't fail the request, just log
     }
-
-    console.log(`Generated and cached: ${publicUrl}`);
 
     return new Response(JSON.stringify({ imageUrl: publicUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -224,11 +192,10 @@ CRITICAL STYLE REQUIREMENTS:
 
   } catch (error) {
     console.error("generate-illustration error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return errorResponse(
+      error instanceof Error ? error.message : "Unknown error",
+      500,
+      corsHeaders,
+    );
   }
 });

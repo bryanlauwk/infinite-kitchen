@@ -1,42 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/errors.ts";
+import { validateSfxInput } from "../_shared/validation.ts";
 
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
-    
+
     if (!ELEVENLABS_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return errorResponse('ELEVENLABS_API_KEY not configured', 500, corsHeaders);
     }
 
-    const { prompt, duration = 3 } = await req.json();
-
-    if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: 'Prompt is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    console.log(`Generating SFX: "${prompt}" (${duration}s)`);
+    const body = await req.json();
+    const { prompt, duration } = validateSfxInput(body);
 
     const response = await fetch('https://api.elevenlabs.io/v1/sound-generation', {
       method: 'POST',
@@ -46,54 +27,40 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         text: prompt,
-        duration_seconds: Math.min(duration, 10), // Cap at 10 seconds
+        duration_seconds: duration,
         prompt_influence: 0.3,
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs API error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `ElevenLabs API error: ${response.status}` }),
-        { 
-          status: response.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+      console.error('ElevenLabs API error:', response.status);
+      return errorResponse(
+        `ElevenLabs API error: ${response.status}`,
+        response.status,
+        corsHeaders,
       );
     }
 
     const audioBuffer = await response.arrayBuffer();
 
-    // Validate audio size (empty or too small = failed generation)
     if (audioBuffer.byteLength < 1000) {
-      console.error('Audio response too small, likely failed generation:', audioBuffer.byteLength, 'bytes');
-      return new Response(
-        JSON.stringify({ error: 'Sound generation failed - audio too short' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return errorResponse('Sound generation failed - audio too short', 500, corsHeaders);
     }
 
     return new Response(audioBuffer, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+        'Cache-Control': 'public, max-age=86400',
       },
     });
 
   } catch (error) {
     console.error('SFX generation error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate sound effect';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+    return errorResponse(
+      error instanceof Error ? error.message : 'Failed to generate sound effect',
+      500,
+      corsHeaders,
     );
   }
 });
