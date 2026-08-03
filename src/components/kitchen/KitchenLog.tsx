@@ -19,7 +19,8 @@ const formatLogEntry = (event: TimelineEvent): string => {
     case 'action':
       if (event.functionCall) {
         const ingredients = event.functionCall.ingredients.join(', ');
-        return `${event.functionCall.name}(${ingredients})`;
+        const method = event.functionCall.name.replace(/_/g, ' ');
+        return `${method.charAt(0).toUpperCase()}${method.slice(1)}: ${ingredients}`;
       }
       return event.content;
     case 'result':
@@ -64,10 +65,10 @@ export const KitchenLog: React.FC = () => {
     <div className={`rounded-2xl overflow-hidden border border-border card-elevated flex flex-col transition-all ${isExpanded ? 'h-[500px]' : 'h-full min-h-[200px]'}`}>
       {/* Header bar */}
       <div className="flex justify-between items-center px-4 py-2.5 bg-muted border-b border-border flex-shrink-0">
-        <h2 className="font-bold uppercase text-xs tracking-wide">Kitchen Log</h2>
+        <h2 className="font-bold text-base">Kitchen Activity</h2>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground font-mono">
-            count: {timeline.length.toString().padStart(4, '0')}
+            {timeline.length} updates
           </span>
           <Button 
             variant="ghost" 
@@ -87,7 +88,7 @@ export const KitchenLog: React.FC = () => {
             <div className="p-4 font-mono text-sm">
             {timeline.length === 0 ? (
               <div className="terminal-text-muted italic">
-                &gt; Waiting for orders...
+                &gt; Waiting for a dish...
               </div>
             ) : (
                 <div className="space-y-1">
