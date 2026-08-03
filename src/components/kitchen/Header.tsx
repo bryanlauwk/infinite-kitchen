@@ -39,11 +39,14 @@ export const Header: React.FC = () => {
       {/* Content */}
       <div className="relative flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-foreground">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            Secai Marche · Kitchen Lab
+          </p>
+          <h1 className="text-3xl md:text-4xl font-black text-foreground">
             INFINITE KITCHEN
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Where ingredients become possibilities
+            Explore dishes, ingredients and cooking methods
           </p>
         </div>
 
@@ -51,7 +54,7 @@ export const Header: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 gap-2 rounded-lg text-xs"
+            className="h-9 gap-2 rounded-none text-xs"
             onClick={handleToggleSound}
             aria-pressed={isEnabled}
             aria-label={isEnabled ? 'Turn kitchen sound off' : 'Turn kitchen sound on'}
