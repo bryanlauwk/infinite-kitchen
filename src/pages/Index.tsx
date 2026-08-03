@@ -27,7 +27,7 @@ const KitchenContent: React.FC = () => {
   }, [runCookingLoop]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="secai-kitchen min-h-screen bg-background">
       <Header />
       <HeroBanner />
       
