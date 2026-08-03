@@ -101,9 +101,9 @@ export const IngredientsPanel: React.FC = () => {
   return (
     <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
       <div className="mb-3 flex-shrink-0 space-y-3">
-        <h2 className="font-bold uppercase text-sm tracking-wide">Ingredients</h2>
+        <h2 className="font-bold text-lg">Pantry</h2>
         <p className="text-xs text-muted-foreground">
-          Showing {filteredInventory.length} of {inventory.length} known items.
+          {filteredInventory.length} of {inventory.length} ingredients
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_135px] lg:grid-cols-1 gap-2">
           <div className="relative">
@@ -123,8 +123,8 @@ export const IngredientsPanel: React.FC = () => {
             <SelectContent className="bg-popover border border-border z-50">
               <SelectItem value="all">All ({inventory.length})</SelectItem>
               <SelectItem value="featured">This Week ({featuredCount})</SelectItem>
-              <SelectItem value="base">Base</SelectItem>
-              <SelectItem value="discovered">Discovered</SelectItem>
+              <SelectItem value="base">Standard ingredients</SelectItem>
+              <SelectItem value="discovered">New ingredients</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -205,7 +205,7 @@ export const IngredientsPanel: React.FC = () => {
           })}
           {filteredInventory.length === 0 && (
             <div className="py-8 text-center text-xs text-muted-foreground">
-              No ingredients match that search.
+              No ingredients found.
             </div>
           )}
         </div>
