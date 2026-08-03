@@ -1,11 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import headerIllustration from '@/assets/header-illustration.png';
 import { Button } from '@/components/ui/button';
 import { useSound } from '@/context/SoundContext';
 import { Volume2, VolumeX } from 'lucide-react';
 
+const SOUND_PREF_KEY = 'infinite-kitchen-sound-enabled';
+
 export const Header: React.FC = () => {
   const { isEnabled, toggleSounds } = useSound();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedPreference = window.localStorage.getItem(SOUND_PREF_KEY);
+    if (savedPreference !== 'true' && isEnabled) {
+      toggleSounds();
+    }
+  }, [isEnabled, toggleSounds]);
+
+  const handleToggleSound = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SOUND_PREF_KEY, String(!isEnabled));
+    }
+    toggleSounds();
+  };
 
   return (
     <header className="relative overflow-hidden border-b border-border">
@@ -34,7 +52,7 @@ export const Header: React.FC = () => {
             variant="outline"
             size="sm"
             className="h-9 gap-2 rounded-lg text-xs"
-            onClick={toggleSounds}
+            onClick={handleToggleSound}
             aria-pressed={isEnabled}
             aria-label={isEnabled ? 'Turn kitchen sound off' : 'Turn kitchen sound on'}
           >
