@@ -17,24 +17,25 @@ interface ActionRecord {
   ingredients: string[];
 }
 
-// Retry helper with exponential backoff
+// Retry helper with exponential backoff + jitter (handles transient 5xx/503 from the backend)
 async function callWithRetry<T>(
-  fn: () => Promise<T>, 
-  maxRetries: number = 2,
-  baseDelay: number = 1000
+  fn: () => Promise<T>,
+  maxRetries: number = 4,
+  baseDelay: number = 800
 ): Promise<T> {
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await fn();
     } catch (error) {
       if (i === maxRetries) throw error;
-      const delay = baseDelay * Math.pow(2, i);
-      console.warn(`Retry ${i + 1}/${maxRetries} after ${delay}ms...`);
+      const delay = baseDelay * Math.pow(2, i) + Math.random() * 300;
+      console.warn(`Retry ${i + 1}/${maxRetries} after ${Math.round(delay)}ms...`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
   throw new Error('Unreachable');
 }
+
 
 export function useCookingLoop() {
   const {
