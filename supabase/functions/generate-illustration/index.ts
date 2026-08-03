@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { readJsonBody, requireString, requirePromptKey, guardResponse, GuardError } from "../_shared/guard.ts";
+
+const ALLOWED_TYPES = ["dish", "chef", "ingredient", "technique"];
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +16,13 @@ serve(async (req) => {
   }
 
   try {
-    const { dishName, type, promptKey } = await req.json();
+    const body = await readJsonBody<Record<string, unknown>>(req, 8 * 1024);
+    const dishName = requireString(body.dishName, "dishName", 600);
+    const type = requireString(body.type, "type", 20);
+    if (!ALLOWED_TYPES.includes(type)) {
+      throw new GuardError("type must be one of: dish, chef, ingredient, technique");
+    }
+    const promptKey = requirePromptKey(body.promptKey);
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -223,6 +232,8 @@ CRITICAL STYLE REQUIREMENTS:
     });
 
   } catch (error) {
+    const guarded = guardResponse(error, corsHeaders);
+    if (guarded) return guarded;
     console.error("generate-illustration error:", error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Unknown error" 
