@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { readJsonBody, requireString, requireArray, guardResponse, GuardError } from "../_shared/guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -412,7 +413,17 @@ serve(async (req) => {
   }
 
   try {
-    const { inventory, order, conversationHistory } = await req.json();
+    const body = await readJsonBody<Record<string, unknown>>(req, 64 * 1024);
+    const inventory = requireArray<{ emoji?: string; name?: string; id?: string }>(body.inventory, "inventory", 200);
+    const conversationHistory = requireArray<unknown>(body.conversationHistory ?? [], "conversationHistory", 60);
+    const order = body.order as { name?: string } | undefined;
+    if (!order || typeof order !== "object") {
+      throw new GuardError("order is required");
+    }
+    requireString(order.name, "order.name", 200);
+    for (const item of inventory) {
+      requireString(item?.name, "inventory item name", 100);
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -620,6 +631,8 @@ For simple dishes, the served dish name MUST match or closely resemble the order
     });
 
   } catch (error) {
+    const guarded = guardResponse(error, corsHeaders);
+    if (guarded) return guarded;
     console.error("Cooking agent error:", error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Unknown error" 

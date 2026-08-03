@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { readJsonBody, requireString, guardResponse } from "../_shared/guard.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,17 +25,10 @@ serve(async (req) => {
       );
     }
 
-    const { prompt, duration = 3 } = await req.json();
-
-    if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: 'Prompt is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    const body = await readJsonBody<Record<string, unknown>>(req, 4 * 1024);
+    const prompt = requireString(body.prompt, "prompt", 300);
+    const rawDuration = typeof body.duration === "number" ? body.duration : 3;
+    const duration = Math.min(Math.max(rawDuration, 0.5), 10);
 
     console.log(`Generating SFX: "${prompt}" (${duration}s)`);
 
@@ -86,6 +80,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const guarded = guardResponse(error, corsHeaders);
+    if (guarded) return guarded;
     console.error('SFX generation error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate sound effect';
     return new Response(

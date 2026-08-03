@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { readJsonBody, requireString, guardResponse } from "../_shared/guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const { servedDish, orderName } = await req.json();
+    const body = await readJsonBody<Record<string, unknown>>(req, 8 * 1024);
+    const servedDish = requireString(body.servedDish, "servedDish", 200);
+    const orderName = requireString(body.orderName, "orderName", 200);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -149,6 +152,8 @@ Does the served dish fulfill the order?`;
     });
 
   } catch (error) {
+    const guarded = guardResponse(error, corsHeaders);
+    if (guarded) return guarded;
     console.error("Judge agent error:", error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Unknown error" 
