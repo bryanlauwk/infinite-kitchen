@@ -60,9 +60,9 @@ export const TechniquesPanel: React.FC = () => {
   return (
     <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
       <div className="mb-3 flex-shrink-0">
-        <h2 className="font-bold uppercase text-sm tracking-wide">Impossible Techniques</h2>
+        <h2 className="font-bold text-lg">Cooking Methods</h2>
         <p className="text-xs text-muted-foreground">
-          Toggle what the kitchen can do.
+          Choose which methods the kitchen can use.
         </p>
       </div>
       
