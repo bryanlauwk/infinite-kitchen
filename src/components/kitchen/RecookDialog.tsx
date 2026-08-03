@@ -35,10 +35,10 @@ export const RecookDialog: React.FC<RecookDialogProps> = ({
     onOpenChange(false);
   };
 
-  const title = isImprovement ? 'Request Improvement' : 'Try Again';
+  const title = isImprovement ? 'Improve dish' : 'Cook dish again';
   const description = isImprovement
-    ? 'The dish was accepted but could be improved. Add notes for the chef.'
-    : 'The dish was rejected. Add feedback to help the chef try a different approach.';
+    ? 'The dish is ready, but you can send it back with a note for the chef.'
+    : 'The dish needs another try. Add a note to help the chef adjust it.';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,7 +72,7 @@ export const RecookDialog: React.FC<RecookDialogProps> = ({
           {/* Show previous rejection reasoning */}
           {order.judgeResult?.reasoning && (
             <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded border border-border/30">
-              <span className="font-medium">Chef's note: </span>
+              <span className="font-medium">Kitchen note: </span>
               {order.judgeResult.reasoning}
             </div>
           )}
@@ -80,7 +80,7 @@ export const RecookDialog: React.FC<RecookDialogProps> = ({
           {/* Show confidence for improvement requests */}
           {isImprovement && order.judgeResult?.confidence && (
             <div className="text-xs text-muted-foreground">
-              Match confidence: {order.judgeResult.confidence}%
+              Dish match score: {order.judgeResult.confidence}%
             </div>
           )}
 
@@ -117,7 +117,7 @@ export const RecookDialog: React.FC<RecookDialogProps> = ({
             className="flex-1 gap-1.5"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Just Retry
+            Cook again
           </Button>
           <Button
             onClick={() => handleRecook(true)}
@@ -125,7 +125,7 @@ export const RecookDialog: React.FC<RecookDialogProps> = ({
             disabled={!feedback.trim()}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            Retry with Notes
+            Cook with notes
           </Button>
         </DialogFooter>
       </DialogContent>
