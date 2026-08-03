@@ -3,6 +3,7 @@ import { Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { DishIllustration } from './DishIllustration';
+import { isFeaturedDish } from '@/data/featured';
 
 interface OrderCardProps {
   order: Order;
@@ -58,6 +59,7 @@ const getStatusText = (status: Order['status']): string => {
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled }) => {
   const isActive = order.status === 'active' || order.status === 'cooking';
   const config = difficultyConfig[order.difficulty];
+  const isFeatured = isFeaturedDish(order.id);
   
   return (
     <div 
@@ -79,6 +81,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
       {order.recookCount && order.recookCount > 0 && (
         <div className="absolute top-2 right-2 z-10 text-[10px] text-muted-foreground bg-background/80 px-1.5 py-0.5 rounded">
           #{order.recookCount + 1}
+        </div>
+      )}
+
+      {isFeatured && !order.recookCount && (
+        <div className="absolute top-2 right-2 z-10 text-[9px] uppercase tracking-wide text-processing bg-background/90 border border-processing/40 px-1.5 py-0.5 rounded">
+          this week
         </div>
       )}
       
