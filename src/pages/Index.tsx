@@ -32,10 +32,10 @@ const KitchenContent: React.FC = () => {
       <HeroBanner />
       
       {/* Main Three-Column Layout */}
-      <div className="px-6 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4" style={{ minHeight: '600px' }}>
+      <div className="px-3 py-4 sm:px-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_280px] lg:min-h-[600px]">
           {/* Left Column - Ingredients */}
-          <div className="lg:h-[600px]">
+          <div className="h-[420px] lg:h-[600px]">
             <IngredientsPanel />
           </div>
           
@@ -46,14 +46,14 @@ const KitchenContent: React.FC = () => {
           />
           
           {/* Right Column - Techniques */}
-          <div className="lg:h-[600px]">
+          <div className="h-[420px] lg:h-[600px]">
             <TechniquesPanel />
           </div>
         </div>
       </div>
 
       {/* Chefs & Kitchen Log - Side by Side */}
-      <div className="px-6 py-4">
+      <div className="px-3 py-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
           <ChefsSection />
           <KitchenLog />
