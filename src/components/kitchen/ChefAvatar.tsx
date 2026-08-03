@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 interface ChefAvatarProps {
   agentType: 'chef' | 'sous' | 'expeditor';
   isActive?: boolean;
+  isSummoning?: boolean;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ const agentKeys: Record<string, string> = {
 export const ChefAvatar: React.FC<ChefAvatarProps> = ({
   agentType,
   isActive = false,
+  isSummoning = false,
   className,
 }) => {
   const { getIllustration, requestIllustration } = useIllustrations();
@@ -39,7 +41,8 @@ export const ChefAvatar: React.FC<ChefAvatarProps> = ({
       className={cn(
         "w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden",
         "bg-background/80 backdrop-blur-sm border border-border/30 shadow-sm",
-        isActive && "ring-2 ring-processing/50",
+        isSummoning && "chef-avatar-summoning",
+        isActive && "chef-avatar-active ring-2 ring-processing/50",
         className
       )}
     >
