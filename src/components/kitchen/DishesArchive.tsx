@@ -120,7 +120,7 @@ export const DishesArchive: React.FC = () => {
         <div className="px-4 py-3 border-b border-border space-y-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 className="font-bold uppercase text-sm tracking-wide">Dishes Served</h2>
+              <h2 className="font-bold text-lg">Dish History</h2>
               <p className="text-xs text-muted-foreground">
                 Showing {filteredDishes.length} of {completedDishes.length} saved dishes.
               </p>
@@ -132,7 +132,7 @@ export const DishesArchive: React.FC = () => {
               onClick={resetProgress}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Reset Collection
+              Clear history
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_170px] gap-2">
@@ -152,8 +152,8 @@ export const DishesArchive: React.FC = () => {
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border z-50">
                 <SelectItem value="all">All ({completedDishes.length})</SelectItem>
-                <SelectItem value="verified">Verified ({verifiedCount})</SelectItem>
-                <SelectItem value="rejected">Rejected ({rejectedCount})</SelectItem>
+                <SelectItem value="verified">Approved ({verifiedCount})</SelectItem>
+                <SelectItem value="rejected">Try again ({rejectedCount})</SelectItem>
                 <SelectItem value="featured">This Week ({featuredCount})</SelectItem>
               </SelectContent>
             </Select>
@@ -200,7 +200,7 @@ export const DishesArchive: React.FC = () => {
                     </div>
                     {dish.servedDish && dish.servedDish !== dish.dishName && (
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        (ordered as: {dish.dishName})
+                        Order: {dish.dishName}
                       </p>
                     )}
                   </div>
@@ -256,7 +256,7 @@ export const DishesArchive: React.FC = () => {
                   <div className="mt-3 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <span className="w-1 h-1 rounded-full bg-muted-foreground/50 animate-pulse" />
-                      awaiting feedback
+                      Waiting for feedback
                     </span>
                   </div>
                 )}
@@ -265,7 +265,7 @@ export const DishesArchive: React.FC = () => {
                 {dish.status === 'rejected' && !dish.review && (
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="text-xs text-muted-foreground opacity-60">
-                      Something felt off.
+                      The dish needs another try.
                     </span>
                     <Button
                       variant="secondary"
@@ -274,7 +274,7 @@ export const DishesArchive: React.FC = () => {
                       onClick={() => handleRecookClick(dish, false)}
                     >
                       <RotateCcw className="h-3 w-3" />
-                      Try Again
+                      Cook again
                     </Button>
                   </div>
                 )}
@@ -283,7 +283,7 @@ export const DishesArchive: React.FC = () => {
                 {dish.status === 'verified' && dish.improvable && (
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="text-xs text-muted-foreground opacity-60">
-                      Could be better.
+                      The dish can be improved.
                     </span>
                     <Button
                       variant="ghost"
@@ -292,7 +292,7 @@ export const DishesArchive: React.FC = () => {
                       onClick={() => handleRecookClick(dish, true)}
                     >
                       <Sparkles className="h-3 w-3" />
-                      Request Improvement
+                      Improve dish
                     </Button>
                   </div>
                 )}
@@ -302,7 +302,7 @@ export const DishesArchive: React.FC = () => {
 
           {filteredDishes.length === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              No served dishes match those filters.
+              No dishes found.
             </div>
           )}
         </div>
