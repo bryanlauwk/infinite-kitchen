@@ -2,13 +2,28 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { categoryToGroup, groupLabels, groupOrder } from '@/lib/ingredientGroups';
 import { Ingredient, IngredientGroup } from '@/lib/types';
 import { IngredientIllustration } from './IngredientIllustration';
+import { isFeaturedIngredient } from '@/data/featured';
+import { Search } from 'lucide-react';
+
+type IngredientFilter = 'all' | 'featured' | 'base' | 'discovered';
 
 export const IngredientsPanel: React.FC = () => {
   const { inventory, activeIngredients } = useKitchen();
   const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<IngredientFilter>('all');
   const ingredientRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
@@ -35,6 +50,25 @@ export const IngredientsPanel: React.FC = () => {
     }
   }, [activeIngredients]);
   
+  const filteredInventory = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return inventory.filter(ingredient => {
+      const matchesSearch = !normalizedQuery ||
+        ingredient.name.toLowerCase().includes(normalizedQuery) ||
+        ingredient.id.toLowerCase().includes(normalizedQuery) ||
+        ingredient.category.toLowerCase().includes(normalizedQuery);
+
+      const matchesFilter =
+        filter === 'all' ||
+        (filter === 'featured' && isFeaturedIngredient(ingredient.id)) ||
+        (filter === 'base' && !ingredient.isGenerated) ||
+        (filter === 'discovered' && !!ingredient.isGenerated);
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [filter, inventory, searchQuery]);
+
   // Group ingredients by category group
   const groupedIngredients = useMemo(() => {
     const groups: Record<IngredientGroup, Ingredient[]> = {
@@ -45,7 +79,7 @@ export const IngredientsPanel: React.FC = () => {
       culinary: [],
     };
     
-    inventory.forEach(ingredient => {
+    filteredInventory.forEach(ingredient => {
       if (ingredient.isGenerated) {
         groups.discovered.push(ingredient);
       } else {
@@ -57,15 +91,43 @@ export const IngredientsPanel: React.FC = () => {
     });
     
     return groups;
-  }, [inventory]);
+  }, [filteredInventory]);
+
+  const featuredCount = useMemo(
+    () => inventory.filter(ingredient => isFeaturedIngredient(ingredient.id)).length,
+    [inventory]
+  );
   
   return (
     <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
-      <div className="mb-3 flex-shrink-0">
+      <div className="mb-3 flex-shrink-0 space-y-3">
         <h2 className="font-bold uppercase text-sm tracking-wide">Ingredients</h2>
         <p className="text-xs text-muted-foreground">
-          What the kitchen knows.
+          Showing {filteredInventory.length} of {inventory.length} known items.
         </p>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_135px] lg:grid-cols-1 gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search pantry"
+              aria-label="Search ingredients"
+              className="h-9 rounded-lg pl-8 text-xs"
+            />
+          </div>
+          <Select value={filter} onValueChange={(value) => setFilter(value as IngredientFilter)}>
+            <SelectTrigger className="h-9 rounded-lg text-xs">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border z-50">
+              <SelectItem value="all">All ({inventory.length})</SelectItem>
+              <SelectItem value="featured">This Week ({featuredCount})</SelectItem>
+              <SelectItem value="base">Base</SelectItem>
+              <SelectItem value="discovered">Discovered</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
       <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
@@ -126,6 +188,11 @@ export const IngredientsPanel: React.FC = () => {
                             {ingredient.name}
                           </span>
                         </label>
+                        {isFeaturedIngredient(ingredient.id) && (
+                          <Badge variant="outline" className="h-5 flex-shrink-0 rounded px-1.5 text-[9px] uppercase tracking-wide text-processing border-processing/40">
+                            this week
+                          </Badge>
+                        )}
                         {isActive && (
                           <span className="inline-flex h-2 w-2 rounded-full bg-gemini animate-pulse" />
                         )}
@@ -136,6 +203,11 @@ export const IngredientsPanel: React.FC = () => {
               </div>
             );
           })}
+          {filteredInventory.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              No ingredients match that search.
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>

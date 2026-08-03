@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { 
   Ingredient, 
   Order, 
@@ -15,6 +15,7 @@ interface KitchenContextType {
   inventory: Ingredient[];
   addToInventory: (ingredient: Ingredient) => void;
   resetInventory: () => void;
+  resetProgress: () => void;
   
   // Orders
   orders: Order[];
@@ -48,6 +49,50 @@ interface KitchenContextType {
 
 const KitchenContext = createContext<KitchenContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'infinite-kitchen-progress-v1';
+
+interface PersistedProgress {
+  orders: Order[];
+  generatedInventory: Ingredient[];
+}
+
+const readProgress = (): PersistedProgress | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<PersistedProgress>;
+    if (!Array.isArray(parsed.orders) || !Array.isArray(parsed.generatedInventory)) {
+      return null;
+    }
+
+    return {
+      orders: parsed.orders,
+      generatedInventory: parsed.generatedInventory,
+    };
+  } catch (error) {
+    console.warn('Unable to read kitchen progress:', error);
+    return null;
+  }
+};
+
+const mergeInventory = (generatedInventory: Ingredient[]) => {
+  const seen = new Set(baseIngredients.map(ingredient => ingredient.id));
+  const restoredGenerated = generatedInventory.filter(ingredient => {
+    if (!ingredient?.id || seen.has(ingredient.id)) return false;
+    seen.add(ingredient.id);
+    return true;
+  });
+
+  return [...baseIngredients, ...restoredGenerated.map(ingredient => ({
+    ...ingredient,
+    category: 'generated' as const,
+    isGenerated: true,
+  }))];
+};
+
 export const useKitchen = () => {
   const context = useContext(KitchenContext);
   if (!context) {
@@ -63,9 +108,12 @@ interface KitchenProviderProps {
 export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) => {
   // Initialize with ALL dishes from all difficulty levels
   const initialOrders = orderTemplates.map(template => createOrder(template));
+  const savedProgress = readProgress();
   
-  const [inventory, setInventory] = useState<Ingredient[]>([...baseIngredients]);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [inventory, setInventory] = useState<Ingredient[]>(
+    savedProgress ? mergeInventory(savedProgress.generatedInventory) : [...baseIngredients]
+  );
+  const [orders, setOrders] = useState<Order[]>(savedProgress?.orders?.length ? savedProgress.orders : initialOrders);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [cookingState, setCookingState] = useState<CookingState>({
     isActive: false,
@@ -92,6 +140,23 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
   const resetInventory = useCallback(() => {
     setInventory([...baseIngredients]);
   }, []);
+
+  const resetProgress = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+
+    setInventory([...baseIngredients]);
+    setOrders(initialOrders);
+    setTimeline([]);
+    setCookingState({
+      isActive: false,
+      currentOrder: null,
+      conversationHistory: [],
+    });
+    setActiveIngredientsState([]);
+    setActiveTechniqueState(null);
+  }, [initialOrders]);
 
   // Order functions
   const addOrder = useCallback((dishName: string) => {
@@ -229,10 +294,27 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
     setActiveTechniqueState(null);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const generatedInventory = inventory.filter(ingredient => ingredient.isGenerated);
+    const progress: PersistedProgress = {
+      orders,
+      generatedInventory,
+    };
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    } catch (error) {
+      console.warn('Unable to persist kitchen progress:', error);
+    }
+  }, [inventory, orders]);
+
   const value: KitchenContextType = {
     inventory,
     addToInventory,
     resetInventory,
+    resetProgress,
     orders,
     addOrder,
     startOrder,

@@ -1,0 +1,36 @@
+@keyframes chef-cook {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  35% {
+    transform: translateY(-3px) rotate(-2deg) scale(1.03);
+  }
+  70% {
+    transform: translateY(1px) rotate(2deg) scale(1.01);
+  }
+}
+
+@keyframes chef-summon-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--processing) / 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 5px hsl(var(--processing) / 0);
+  }
+}
+
+.chef-avatar-active {
+  animation: chef-cook 0.9s ease-in-out infinite;
+}
+
+.chef-avatar-summoning {
+  animation: chef-summon-glow 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chef-avatar-active,
+  .chef-avatar-summoning,
+  .animate-pulse-ring {
+    animation: none;
+  }
+}
