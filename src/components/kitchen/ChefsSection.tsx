@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAgents } from '@/context/AgentContext';
+import { useKitchen } from '@/context/KitchenContext';
 import { AgentType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ChefAvatar } from './ChefAvatar';
@@ -33,17 +34,19 @@ const CompactChefRow: React.FC<{
   type: AgentType;
   agent: { status: string; currentThinking?: string };
   profile: { title: string; gradientClass: string };
-}> = ({ type, agent, profile }) => {
+  isSummoning: boolean;
+}> = ({ type, agent, profile, isSummoning }) => {
   const isActive = agent.status === 'thinking' || agent.status === 'acting';
   
   return (
     <div className={cn(
       "flex items-center gap-3 p-2 rounded-xl border transition-all",
       profile.gradientClass,
+      isSummoning && "shadow-processing/20",
       isActive && "ring-2 ring-processing/40"
     )}>
       <div className="relative flex-shrink-0">
-        <ChefAvatar agentType={type} isActive={isActive} className="w-10 h-10" />
+        <ChefAvatar agentType={type} isActive={isActive} isSummoning={isSummoning} className="w-10 h-10" />
         {isActive && (
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-processing rounded-full animate-pulse border-2 border-background" />
         )}
@@ -62,8 +65,10 @@ const CompactChefRow: React.FC<{
 
 export const ChefsSection: React.FC = () => {
   const { agents } = useAgents();
+  const { cookingState } = useKitchen();
   const [isCompact, setIsCompact] = useState(true); // Compact by default
   const agentOrder: AgentType[] = ['chef', 'sous', 'expeditor'];
+  const isSummoning = cookingState.isActive;
   
   return (
     <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
@@ -94,6 +99,7 @@ export const ChefsSection: React.FC = () => {
               type={type}
               agent={agents[type]}
               profile={chefProfiles[type]}
+              isSummoning={isSummoning}
             />
           ))}
         </div>
@@ -111,6 +117,7 @@ export const ChefsSection: React.FC = () => {
                 className={cn(
                   "rounded-2xl p-4 border transition-all card-elevated",
                   profile.gradientClass,
+                  isSummoning && "animate-pulse-ring",
                   isActive && "ring-2 ring-processing/40"
                 )}
               >
@@ -118,6 +125,7 @@ export const ChefsSection: React.FC = () => {
                 <ChefAvatar 
                   agentType={type}
                   isActive={isActive}
+                  isSummoning={isSummoning}
                   className="mb-4"
                 />
                 
