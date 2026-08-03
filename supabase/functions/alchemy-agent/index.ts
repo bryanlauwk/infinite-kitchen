@@ -12,7 +12,12 @@ serve(async (req) => {
   }
 
   try {
-    const { action, ingredients } = await req.json();
+    const body = await readJsonBody<Record<string, unknown>>(req, 16 * 1024);
+    const action = requireString(body.action, "action", 60);
+    const ingredients = requireArray<{ emoji?: string; name?: string }>(body.ingredients, "ingredients", 20);
+    for (const item of ingredients) {
+      requireString(item?.name, "ingredient name", 100);
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -193,6 +198,8 @@ What is the result?`;
     });
 
   } catch (error) {
+    const guarded = guardResponse(error, corsHeaders);
+    if (guarded) return guarded;
     console.error("Alchemy agent error:", error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Unknown error" 
