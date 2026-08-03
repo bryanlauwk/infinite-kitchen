@@ -1,23 +1,75 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useKitchen } from '@/context/KitchenContext';
 import { renderStars, getCustomerAvatarForDish } from '@/lib/reviewGenerator';
 import { cn } from '@/lib/utils';
 import { DishIllustration } from './DishIllustration';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Sparkles } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { RotateCcw, Search, Share2, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { RecookDialog } from './RecookDialog';
 import { Order } from '@/lib/types';
+import { isFeaturedDish } from '@/data/featured';
+
+type ArchiveFilter = 'all' | 'verified' | 'rejected' | 'featured';
 
 export const DishesArchive: React.FC = () => {
-  const { orders, recookOrder } = useKitchen();
+  const { orders, recookOrder, resetProgress } = useKitchen();
   const [dialogOrder, setDialogOrder] = useState<Order | null>(null);
   const [isImprovement, setIsImprovement] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>('all');
+  const [highlightedDishId, setHighlightedDishId] = useState<string | null>(null);
+  const dishRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   // Only show served/verified/rejected dishes
   const completedDishes = orders.filter(
     order => order.status === 'served' || order.status === 'verified' || order.status === 'rejected'
   );
+
+  const filteredDishes = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return completedDishes.filter(dish => {
+      const dishLabel = dish.servedDish || dish.dishName;
+      const matchesSearch = !normalizedQuery ||
+        dishLabel.toLowerCase().includes(normalizedQuery) ||
+        dish.dishName.toLowerCase().includes(normalizedQuery) ||
+        dish.id.toLowerCase().includes(normalizedQuery) ||
+        dish.status.toLowerCase().includes(normalizedQuery);
+
+      const matchesFilter =
+        archiveFilter === 'all' ||
+        dish.status === archiveFilter ||
+        (archiveFilter === 'featured' && isFeaturedDish(dish.id));
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [archiveFilter, completedDishes, searchQuery]);
+
+  const verifiedCount = completedDishes.filter(dish => dish.status === 'verified').length;
+  const rejectedCount = completedDishes.filter(dish => dish.status === 'rejected').length;
+  const featuredCount = completedDishes.filter(dish => isFeaturedDish(dish.id)).length;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const dishId = params.get('dish');
+    if (!dishId) return;
+
+    setHighlightedDishId(dishId);
+    window.setTimeout(() => {
+      dishRefs.current.get(dishId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [completedDishes.length]);
   
   const handleRecookClick = (order: Order, improvement: boolean = false) => {
     setDialogOrder(order);
@@ -34,33 +86,97 @@ export const DishesArchive: React.FC = () => {
     });
     setDialogOrder(null);
   };
+
+  const handleShareDish = async (dish: Order) => {
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('dish', dish.id);
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      toast({
+        title: 'Dish link copied',
+        description: `${dish.servedDish || dish.dishName} is ready to share.`,
+      });
+      setHighlightedDishId(dish.id);
+    } catch {
+      window.history.replaceState(null, '', url);
+      toast({
+        title: 'Dish link added to URL',
+        description: 'Copy the current address to share it.',
+      });
+    }
+  };
   
   if (completedDishes.length === 0) {
     return null; // Don't show until first dish is completed
   }
   
   return (
-    <section className="px-6 py-4">
+    <section className="px-3 py-4 sm:px-6">
       <div className="border border-border rounded-lg bg-card overflow-hidden">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-border">
-          <h2 className="font-bold uppercase text-sm tracking-wide">Dishes Served</h2>
-          <p className="text-xs text-muted-foreground">
-            They left the kitchen.
-          </p>
+        <div className="px-4 py-3 border-b border-border space-y-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="font-bold uppercase text-sm tracking-wide">Dishes Served</h2>
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredDishes.length} of {completedDishes.length} saved dishes.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full gap-1.5 text-xs text-muted-foreground md:w-auto"
+              onClick={resetProgress}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Reset Collection
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_170px] gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search served dishes"
+                aria-label="Search served dishes"
+                className="h-9 rounded-lg pl-8 text-xs"
+              />
+            </div>
+            <Select value={archiveFilter} onValueChange={(value) => setArchiveFilter(value as ArchiveFilter)}>
+              <SelectTrigger className="h-9 rounded-lg text-xs">
+                <SelectValue placeholder="Filter archive" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border z-50">
+                <SelectItem value="all">All ({completedDishes.length})</SelectItem>
+                <SelectItem value="verified">Verified ({verifiedCount})</SelectItem>
+                <SelectItem value="rejected">Rejected ({rejectedCount})</SelectItem>
+                <SelectItem value="featured">This Week ({featuredCount})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         {/* Dishes list */}
         <div className="divide-y divide-border">
-          {completedDishes.map((dish, index) => {
+          {filteredDishes.map((dish, index) => {
             const customerAvatar = dish.review ? getCustomerAvatarForDish(dish.id) : null;
+            const isHighlighted = highlightedDishId === dish.id;
+            const isFeatured = isFeaturedDish(dish.id);
             
             return (
               <div 
                 key={dish.id}
+                ref={(el) => {
+                  if (el) dishRefs.current.set(dish.id, el);
+                }}
                 className={cn(
                   "p-4 transition-all",
-                  index === 0 && "animate-slide-in"
+                  index === 0 && "animate-slide-in",
+                  isHighlighted && "bg-processing/10 ring-2 ring-inset ring-processing/50"
                 )}
               >
                 {/* Dish info row */}
@@ -72,15 +188,32 @@ export const DishesArchive: React.FC = () => {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm leading-tight">
-                      {dish.servedDish || dish.dishName}
-                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-sm leading-tight">
+                        {dish.servedDish || dish.dishName}
+                      </h3>
+                      {isFeatured && (
+                        <span className="rounded border border-processing/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-processing">
+                          this week
+                        </span>
+                      )}
+                    </div>
                     {dish.servedDish && dish.servedDish !== dish.dishName && (
                       <p className="text-xs text-muted-foreground mt-0.5">
                         (ordered as: {dish.dishName})
                       </p>
                     )}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 flex-shrink-0"
+                    onClick={() => handleShareDish(dish)}
+                    aria-label={`Copy share link for ${dish.servedDish || dish.dishName}`}
+                    title="Copy dish link"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
                 
                 {/* Review block with customer avatar */}
@@ -166,6 +299,12 @@ export const DishesArchive: React.FC = () => {
               </div>
             );
           })}
+
+          {filteredDishes.length === 0 && (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No served dishes match those filters.
+            </div>
+          )}
         </div>
       </div>
 
