@@ -36,13 +36,13 @@ export const TechniqueToggle: React.FC<TechniqueToggleProps> = ({
             techniqueId={tool.id}
           />
         </div>
-        <code className={`text-xs font-mono transition-all duration-300 ${
+        <span className={`text-xs capitalize transition-all duration-300 ${
           isCurrentlyUsed 
             ? 'text-gemini font-semibold' 
             : 'text-muted-foreground'
         }`}>
-          {tool.id}()
-        </code>
+          {tool.name}
+        </span>
         {isCurrentlyUsed && (
           <span className="inline-flex h-2 w-2 rounded-full bg-gemini animate-pulse" />
         )}

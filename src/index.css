@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,8 +10,6 @@
    All colors are HSL.
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
-
 /* Shimmer animation for loading illustrations */
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
@@ -18,35 +18,31 @@
 
 @layer base {
   :root {
-    /* Warm cream background */
-    --background: 45 30% 96%;
-    --foreground: 30 10% 15%;
+    --background: 43 22% 92%;
+    --foreground: 30 9% 13%;
 
-    /* Softer off-white cards */
-    --card: 45 40% 99%;
+    --card: 43 24% 95%;
     --card-foreground: 30 10% 15%;
 
-    --popover: 45 40% 99%;
+    --popover: 43 24% 97%;
     --popover-foreground: 30 10% 15%;
 
-    /* Primary - Dark warm */
-    --primary: 30 10% 15%;
-    --primary-foreground: 45 30% 96%;
+    --primary: 347 43% 40%;
+    --primary-foreground: 43 24% 97%;
 
     /* Secondary - Warm gray */
-    --secondary: 40 20% 94%;
+    --secondary: 41 16% 89%;
     --secondary-foreground: 30 10% 15%;
 
     /* Muted - Subtle warm */
-    --muted: 40 15% 92%;
-    --muted-foreground: 30 8% 45%;
+    --muted: 41 14% 88%;
+    --muted-foreground: 32 5% 43%;
 
-    /* Accent - Gemini Blue (Intelligence) */
-    --accent: 217 91% 60%;
+    --accent: 347 43% 40%;
     --accent-foreground: 0 0% 100%;
 
     /* Status Colors */
-    --gemini: 217 91% 60%;
+    --gemini: 347 43% 40%;
     --gemini-foreground: 0 0% 100%;
     
     --processing: 45 93% 47%;
@@ -78,18 +74,17 @@
     --legendary-foreground: 0 0% 10%;
 
     /* Hero banner - Warm yellow */
-    --hero: 45 80% 92%;
+    --hero: 43 22% 92%;
     --hero-foreground: 30 10% 15%;
 
-    /* Summon button - Coral/salmon */
-    --summon: 16 85% 60%;
+    --summon: 347 43% 35%;
     --summon-foreground: 0 0% 100%;
 
-    --border: 40 20% 88%;
-    --input: 40 20% 88%;
-    --ring: 217 91% 60%;
+    --border: 37 12% 76%;
+    --input: 37 12% 76%;
+    --ring: 347 43% 40%;
 
-    --radius: 0.75rem;
+    --radius: 0.125rem;
 
     --sidebar-background: 45 30% 96%;
     --sidebar-foreground: 30 10% 26%;
@@ -185,25 +180,25 @@
 @layer base {
   * {
     @apply border-border;
+    letter-spacing: 0 !important;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Space Mono', monospace;
+    font-family: 'DM Sans', sans-serif;
   }
 
-  /* Typography: Rounded sans-serif for headers, monospace for body */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Nunito', sans-serif;
-    font-weight: 800;
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
   }
 
-  p, span, div, button, input, textarea, select, code, pre {
-    font-family: 'Space Mono', monospace;
+  p, span, div, button, input, textarea, select {
+    font-family: 'DM Sans', sans-serif;
   }
 
   .font-display {
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Libre Baskerville', serif;
   }
 }
 
@@ -346,15 +341,12 @@
 
   /* Summon button - coral/salmon with rounded corners */
   .btn-summon {
-    @apply bg-[hsl(var(--summon))] text-[hsl(var(--summon-foreground))] hover:bg-[hsl(var(--summon))]/90 rounded-xl font-semibold;
+    @apply rounded-none bg-[hsl(var(--summon))] text-[hsl(var(--summon-foreground))] hover:bg-[hsl(var(--summon))]/90 font-semibold;
   }
 
   /* Card elevated - soft shadows for physical object feel */
   .card-elevated {
-    box-shadow: 
-      0 2px 8px -2px rgba(0, 0, 0, 0.06),
-      0 4px 16px -4px rgba(0, 0, 0, 0.1),
-      0 8px 24px -8px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
   }
 
   .dark .card-elevated {
@@ -369,11 +361,8 @@
   }
 
   .order-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 
-      0 4px 12px -2px rgba(0, 0, 0, 0.08),
-      0 8px 24px -4px rgba(0, 0, 0, 0.12),
-      0 12px 32px -8px rgba(0, 0, 0, 0.1);
+    border-color: hsl(var(--primary));
+    box-shadow: none;
   }
 
   /* Order card pastel backgrounds - 6 levels */
@@ -472,15 +461,15 @@
 
   /* Agent card gradients */
   .agent-gradient-alchemist {
-    background: linear-gradient(135deg, hsl(25 85% 94%) 0%, hsl(16 80% 90%) 100%);
+    background: hsl(43 30% 92%);
   }
 
   .agent-gradient-transmuter {
-    background: linear-gradient(135deg, hsl(190 80% 94%) 0%, hsl(200 75% 90%) 100%);
+    background: hsl(43 30% 92%);
   }
 
   .agent-gradient-oracle {
-    background: linear-gradient(135deg, hsl(270 75% 94%) 0%, hsl(280 70% 90%) 100%);
+    background: hsl(43 30% 92%);
   }
 
   .dark .agent-gradient-alchemist {

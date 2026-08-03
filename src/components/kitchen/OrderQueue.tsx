@@ -73,7 +73,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
       {/* Header with Filter and Audio Log button */}
       <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
         <div className="flex-1">
-          <h2 className="font-bold uppercase text-sm tracking-wide">The Orders of the Universe</h2>
+          <h2 className="font-bold text-lg">Dish Orders</h2>
           <p className="text-xs text-muted-foreground">
             Showing {filteredOrders.length} of {pendingOrders.length} dishes
           </p>
@@ -165,7 +165,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({ onStartOrder, isCooking 
           
           {pendingOrders.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-sm italic">
-              No orders yet. Add one above.
+              No dish orders available.
             </div>
           )}
           {pendingOrders.length > 0 && filteredOrders.length === 0 && (

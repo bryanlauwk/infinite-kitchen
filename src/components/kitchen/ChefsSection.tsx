@@ -13,18 +13,18 @@ const chefProfiles: Record<AgentType, {
   gradientClass: string;
 }> = {
   chef: {
-    title: 'Chef de Cuisine',
-    quirk: 'Analyzes orders and orchestrates cooking actions.',
+    title: 'Head Chef',
+    quirk: 'Plans the dish and runs the cooking steps.',
     gradientClass: 'agent-gradient-alchemist',
   },
   sous: {
     title: 'Sous Chef',
-    quirk: 'Determines transformation outcomes for each action.',
+    quirk: 'Prepares ingredients and handles each cooking method.',
     gradientClass: 'agent-gradient-transmuter',
   },
   expeditor: {
-    title: 'Expeditor',
-    quirk: 'Validates served dishes against customer orders.',
+    title: 'Pass Chef',
+    quirk: 'Checks the finished dish before it is served.',
     gradientClass: 'agent-gradient-oracle',
   },
 };
@@ -56,7 +56,7 @@ const CompactChefRow: React.FC<{
         {isActive && agent.currentThinking ? (
           <p className="text-[10px] text-processing truncate">{agent.currentThinking}</p>
         ) : (
-          <p className="text-[10px] text-muted-foreground/60 italic">Idle</p>
+          <p className="text-[10px] text-muted-foreground/60">Waiting</p>
         )}
       </div>
     </div>
@@ -74,9 +74,9 @@ export const ChefsSection: React.FC = () => {
     <div className="border border-border rounded-2xl p-4 bg-card card-elevated h-full flex flex-col">
       <div className="mb-3 flex-shrink-0 flex items-center justify-between">
         <div>
-          <h2 className="font-bold uppercase text-sm tracking-wide">The Chefs of Reality</h2>
+          <h2 className="font-bold text-lg">Chefs on Duty</h2>
           <p className="text-xs text-muted-foreground">
-            Three function callers, one purpose.
+            Three kitchen roles working on every dish.
           </p>
         </div>
         <Button 
@@ -144,7 +144,7 @@ export const ChefsSection: React.FC = () => {
                 
                 {!isActive && (
                   <div className="text-[11px] text-muted-foreground/60 italic mb-3">
-                    Idle state
+                    Waiting for the next dish
                   </div>
                 )}
                 

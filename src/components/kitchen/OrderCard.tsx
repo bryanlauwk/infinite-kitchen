@@ -41,18 +41,18 @@ const difficultyConfig = {
 const getStatusText = (status: Order['status']): string => {
   switch (status) {
     case 'not_started':
-      return 'Not started';
+      return 'Ready';
     case 'active':
     case 'cooking':
-      return 'Cooking...';
+      return 'Cooking';
     case 'served':
       return 'Served';
     case 'verified':
-      return 'Verified';
+      return 'Approved';
     case 'rejected':
-      return 'Rejected';
+      return 'Needs another try';
     default:
-      return 'Not started';
+      return 'Ready';
   }
 };
 
@@ -120,7 +120,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onStart, isDisabled
             onClick={() => onStart(order.id)}
             disabled={isDisabled}
           >
-            Summon
+            Start cooking
           </Button>
         )}
       </div>

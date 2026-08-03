@@ -18,14 +18,14 @@ export const HeroBanner: React.FC = () => {
   };
 
   return (
-    <section className="mx-3 my-4 px-4 py-4 bg-hero rounded-xl text-center sm:mx-6 sm:px-6">
+    <section className="mx-3 my-4 border-y border-border bg-hero px-4 py-4 text-center sm:mx-6 sm:px-6">
       <p className="text-lg text-hero-foreground">
-        Things happen here. Meals, mostly.
+        Choose a dish. See how the kitchen prepares it.
       </p>
       {showHint && (
-        <div className="mt-3 flex flex-col items-center justify-center gap-2 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground sm:flex-row">
+        <div className="mt-3 flex flex-col items-center justify-center gap-2 border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground sm:flex-row">
           <span>
-            Select ingredients, choose a technique, then summon a dish from the order board.
+            Pick a dish and press Start cooking. The kitchen will choose the ingredients and methods.
           </span>
           <Button
             variant="ghost"

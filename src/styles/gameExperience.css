@@ -27,6 +27,51 @@
   animation: chef-summon-glow 1.8s ease-out infinite;
 }
 
+.secai-kitchen {
+  margin-inline: auto;
+  max-width: 1440px;
+  border-inline: 1px solid hsl(var(--border));
+}
+
+.secai-kitchen header {
+  background: hsl(var(--background));
+}
+
+.secai-kitchen header h1 {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+}
+
+.secai-kitchen header > div:last-child {
+  padding-block: 1rem;
+}
+
+.secai-kitchen .rounded-2xl,
+.secai-kitchen .rounded-xl,
+.secai-kitchen .rounded-lg {
+  border-radius: 2px;
+}
+
+.secai-kitchen input,
+.secai-kitchen button,
+.secai-kitchen [role="combobox"] {
+  border-radius: 2px;
+}
+
+.secai-kitchen .order-card {
+  background: hsl(var(--card));
+}
+
+.secai-kitchen .terminal-bg {
+  background: hsl(32 12% 16%);
+}
+
+@media (max-width: 640px) {
+  .secai-kitchen {
+    border-inline: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chef-avatar-active,
   .chef-avatar-summoning,
