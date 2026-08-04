@@ -427,6 +427,20 @@ serve(async (req) => {
     for (const item of inventory) {
       requireString(item?.name, "inventory item name", 100);
     }
+
+    // A run with no history is a new cooking session: 3 sessions per hour per IP.
+    if (conversationHistory.length === 0) {
+      await enforceRateLimit(
+        req,
+        "cook_session",
+        3,
+        HOUR,
+        "You've started 3 dishes this hour. The kitchen reopens shortly.",
+      );
+    }
+    // Safety net on individual steps within those sessions.
+    await enforceRateLimit(req, "cook_step", 300, HOUR);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
