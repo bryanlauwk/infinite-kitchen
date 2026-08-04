@@ -19,6 +19,9 @@ serve(async (req) => {
     for (const item of ingredients) {
       requireString(item?.name, "ingredient name", 100);
     }
+    // Bounded by the 3 cooking sessions/hour cap; blunt runaway loops.
+    await enforceRateLimit(req, "alchemy", 200, 3600);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
