@@ -16,6 +16,8 @@ serve(async (req) => {
     const body = await readJsonBody<Record<string, unknown>>(req, 8 * 1024);
     const servedDish = requireString(body.servedDish, "servedDish", 200);
     const orderName = requireString(body.orderName, "orderName", 200);
+    // One judgement per served dish; generous headroom over 3 sessions/hour.
+    await enforceRateLimit(req, "judge", 40, 3600);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
