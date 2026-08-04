@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { readJsonBody, requireString, requirePromptKey, guardResponse, GuardError } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
 
 const ALLOWED_TYPES = ["dish", "chef", "ingredient", "technique"];
 
@@ -47,6 +48,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Only paid generations count against the cap; cache hits stay free.
+    await enforceRateLimit(req, "illustration", 60, 3600);
 
     console.log(`Generating illustration for: ${dishName} (type: ${type})`);
 
@@ -232,6 +236,8 @@ CRITICAL STYLE REQUIREMENTS:
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error("generate-illustration error:", error);

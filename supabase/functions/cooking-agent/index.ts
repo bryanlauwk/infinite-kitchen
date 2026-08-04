@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { readJsonBody, requireString, requireArray, guardResponse, GuardError } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
+
+const HOUR = 3600;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -424,6 +427,20 @@ serve(async (req) => {
     for (const item of inventory) {
       requireString(item?.name, "inventory item name", 100);
     }
+
+    // A run with no history is a new cooking session: 3 sessions per hour per IP.
+    if (conversationHistory.length === 0) {
+      await enforceRateLimit(
+        req,
+        "cook_session",
+        3,
+        HOUR,
+        "You've started 3 dishes this hour. The kitchen reopens shortly.",
+      );
+    }
+    // Safety net on individual steps within those sessions.
+    await enforceRateLimit(req, "cook_step", 300, HOUR);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -631,6 +648,8 @@ For simple dishes, the served dish name MUST match or closely resemble the order
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error("Cooking agent error:", error);

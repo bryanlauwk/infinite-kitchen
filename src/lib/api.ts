@@ -1,6 +1,7 @@
 // API Service Layer for Infinite Kitchen
 
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { 
   Ingredient, 
   Order, 
@@ -28,30 +29,58 @@ export interface JudgeAgentResponse extends JudgeResult {
   error?: string;
 }
 
+// Thrown when the backend rejects a call for exceeding the per-visitor cap.
+// Retrying immediately will not help, so the cooking loop must not back off on it.
+export class RateLimitError extends Error {
+  name = 'RateLimitError';
+}
+
+// Shared invoke helper: unwraps the real error body behind the generic
+// "non-2xx status code" message so rate limits surface properly.
+async function invokeFunction<T>(
+  name: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const status = error.context?.status;
+      let message = error.message;
+      try {
+        const payload = await error.context.json();
+        if (payload?.error) message = payload.error;
+      } catch {
+        // body was not JSON; keep the default message
+      }
+      if (status === 429) {
+        throw new RateLimitError(message);
+      }
+      console.error(`${name} error:`, status, message);
+      throw new Error(message);
+    }
+    console.error(`${name} error:`, error);
+    throw new Error(error.message || `Failed to call ${name}`);
+  }
+
+  if ((data as { error?: string })?.error) {
+    throw new Error((data as { error: string }).error);
+  }
+
+  return data as T;
+}
+
 // Cooking Agent - Orchestrator
 export async function callCookingAgent(
   inventory: Ingredient[],
   order: Order,
   conversationHistory: ConversationMessage[]
 ): Promise<CookingAgentResponse> {
-  const { data, error } = await supabase.functions.invoke('cooking-agent', {
-    body: {
-      inventory,
-      order,
-      conversationHistory
-    }
+  return invokeFunction<CookingAgentResponse>('cooking-agent', {
+    inventory,
+    order,
+    conversationHistory
   });
-
-  if (error) {
-    console.error('Cooking agent error:', error);
-    throw new Error(error.message || 'Failed to call cooking agent');
-  }
-
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data as CookingAgentResponse;
 }
 
 // Alchemy Agent - State Transformer
@@ -59,23 +88,10 @@ export async function callAlchemyAgent(
   action: string,
   ingredients: Ingredient[]
 ): Promise<AlchemyAgentResponse> {
-  const { data, error } = await supabase.functions.invoke('alchemy-agent', {
-    body: {
-      action,
-      ingredients
-    }
+  return invokeFunction<AlchemyAgentResponse>('alchemy-agent', {
+    action,
+    ingredients
   });
-
-  if (error) {
-    console.error('Alchemy agent error:', error);
-    throw new Error(error.message || 'Failed to call alchemy agent');
-  }
-
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data as AlchemyAgentResponse;
 }
 
 // Judge Agent - Semantic Validator
@@ -83,21 +99,9 @@ export async function callJudgeAgent(
   servedDish: string,
   orderName: string
 ): Promise<JudgeAgentResponse> {
-  const { data, error } = await supabase.functions.invoke('judge-agent', {
-    body: {
-      servedDish,
-      orderName
-    }
+  return invokeFunction<JudgeAgentResponse>('judge-agent', {
+    servedDish,
+    orderName
   });
-
-  if (error) {
-    console.error('Judge agent error:', error);
-    throw new Error(error.message || 'Failed to call judge agent');
-  }
-
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data as JudgeAgentResponse;
 }
+

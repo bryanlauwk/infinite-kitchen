@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { readJsonBody, requireString, guardResponse } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +30,9 @@ serve(async (req) => {
     const prompt = requireString(body.prompt, "prompt", 300);
     const rawDuration = typeof body.duration === "number" ? body.duration : 3;
     const duration = Math.min(Math.max(rawDuration, 0.5), 10);
+
+    await enforceRateLimit(req, "sfx", 100, 3600);
+
 
     console.log(`Generating SFX: "${prompt}" (${duration}s)`);
 
@@ -80,6 +84,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error('SFX generation error:', error);

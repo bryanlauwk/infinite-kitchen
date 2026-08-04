@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { readJsonBody, requireString, guardResponse } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,8 @@ serve(async (req) => {
     const body = await readJsonBody<Record<string, unknown>>(req, 8 * 1024);
     const servedDish = requireString(body.servedDish, "servedDish", 200);
     const orderName = requireString(body.orderName, "orderName", 200);
+    // One judgement per served dish; generous headroom over 3 sessions/hour.
+    await enforceRateLimit(req, "judge", 40, 3600);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -152,6 +155,8 @@ Does the served dish fulfill the order?`;
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error("Judge agent error:", error);

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { readJsonBody, requireString, requireArray, guardResponse } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +19,9 @@ serve(async (req) => {
     for (const item of ingredients) {
       requireString(item?.name, "ingredient name", 100);
     }
+    // Bounded by the 3 cooking sessions/hour cap; blunt runaway loops.
+    await enforceRateLimit(req, "alchemy", 200, 3600);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -198,6 +202,8 @@ What is the result?`;
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error("Alchemy agent error:", error);
