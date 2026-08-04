@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { readJsonBody, requireString, guardResponse } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
