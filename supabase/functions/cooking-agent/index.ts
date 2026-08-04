@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { readJsonBody, requireString, requireArray, guardResponse, GuardError } from "../_shared/guard.ts";
+import { enforceRateLimit, rateLimitResponse } from "../_shared/ratelimit.ts";
+
+const HOUR = 3600;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
