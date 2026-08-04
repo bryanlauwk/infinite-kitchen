@@ -202,6 +202,8 @@ What is the result?`;
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error("Alchemy agent error:", error);
