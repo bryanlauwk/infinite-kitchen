@@ -27,6 +27,8 @@ async function callWithRetry<T>(
     try {
       return await fn();
     } catch (error) {
+      // Rate limits are deliberate, not transient — retrying only burns the cap.
+      if (error instanceof Error && error.name === 'RateLimitError') throw error;
       if (i === maxRetries) throw error;
       const delay = baseDelay * Math.pow(2, i) + Math.random() * 300;
       console.warn(`Retry ${i + 1}/${maxRetries} after ${Math.round(delay)}ms...`);
