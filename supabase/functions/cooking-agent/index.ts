@@ -419,11 +419,11 @@ serve(async (req) => {
     const body = await readJsonBody<Record<string, unknown>>(req, 64 * 1024);
     const inventory = requireArray<{ emoji?: string; name?: string; id?: string }>(body.inventory, "inventory", 200);
     const conversationHistory = requireArray<unknown>(body.conversationHistory ?? [], "conversationHistory", 60);
-    const order = body.order as { name?: string } | undefined;
+    const order = body.order as { dishName?: string } | undefined;
     if (!order || typeof order !== "object") {
       throw new GuardError("order is required");
     }
-    requireString(order.name, "order.name", 200);
+    requireString(order.dishName, "order.dishName", 200);
     for (const item of inventory) {
       requireString(item?.name, "inventory item name", 100);
     }
