@@ -41,12 +41,41 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_hits: {
+        Row: {
+          bucket: string
+          client_hash: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          bucket: string
+          client_hash: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          bucket?: string
+          client_hash?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      consume_rate_limit: {
+        Args: {
+          _bucket: string
+          _client_hash: string
+          _limit: number
+          _window_seconds: number
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
