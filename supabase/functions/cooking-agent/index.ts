@@ -648,6 +648,8 @@ For simple dishes, the served dish name MUST match or closely resemble the order
     });
 
   } catch (error) {
+    const limited = rateLimitResponse(error, corsHeaders);
+    if (limited) return limited;
     const guarded = guardResponse(error, corsHeaders);
     if (guarded) return guarded;
     console.error("Cooking agent error:", error);
